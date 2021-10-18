@@ -2,13 +2,13 @@ namespace MovementManager.Model
 {
     public class MovementProperty
     {
-        public double Alpha {get;}
-        public double Beta {get;}
+        public byte Alpha {get;}
+        public byte Beta {get;}
 
         public MovementProperty( double alpha, double beta )
         {
-            Alpha = alpha;
-            Beta = beta;
+            Alpha = (byte) alpha;
+            Beta = (byte) beta;
         }
     }
 }

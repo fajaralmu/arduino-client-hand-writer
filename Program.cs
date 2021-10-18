@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Threading;
+using arduino_client_hand_writer.Serial;
 using MovementManager.Helper;
-using MovementManager.Model;
-using MovementManager.Serial;
+using MovementManager.Model; 
 using serial_communication_client.Commands;
+using serial_communication_client.Serial;
 
 namespace MovementManager
 {
@@ -12,20 +13,25 @@ namespace MovementManager
         const int MOTOR_A_PIN = 9;
         const int MOTOR_B_PIN = 10;
         const int MAX_DEGREE = 180;
-        const int B1_LENGTH = 20, B2_LENGTH = 20;
+        const int B1_LENGTH = 40, B2_LENGTH = 40;
         const double TOLERANCE = 0.5;
 
         static double verticalLength, horizontalLength;
-        static SerialClient client;
+        static IClient client;
         static void Main(string[] args)
         {
-            client = SerialClient.Create( "COM7", 9600 );
+            client = new MockClient();// SerialClient.Create( "COM7", 9600 );
             client.Connect();
 
             ResetMotor();
             verticalLength = VerticalLength();
-            horizontalLength = HorizontalLength(); 
+            horizontalLength = HorizontalLength();  
+            
             double maxX = (horizontalLength - B1_LENGTH);
+            double maxY = (verticalLength - B1_LENGTH);
+
+            Console.WriteLine( $"MAX Horizontal Length: { maxX }, MAX Vertical Length: { maxY } ");
+
             for (int x = 0; x < maxX; x++)
             {
                 for (int y = B1_LENGTH; y < verticalLength; y++)
@@ -154,10 +160,10 @@ namespace MovementManager
             return B1_LENGTH *  MathHelper.Sin( alpha ) + B2_LENGTH *  MathHelper.Sin( beta );
         }
 
-        private static double CalculateTetha(double alpha, double beta)
+        private static byte CalculateTetha(double alpha, double beta)
         {
             double lambda =  MathHelper.CosAngle(  MathHelper.Sin ( alpha ) );
-            return lambda + beta ;//+ 90;
+            return (byte) ( lambda + beta );//+ 90;
         }
     }
 }
