@@ -14,7 +14,7 @@ namespace serial_communication_client.Serial
         const MessagingControl ETX = MessagingControl.EndOfText;
         const MessagingControl EOT = MessagingControl.EndOfTransmision;
 
-        const int DELAY_PER_WRITE = 100;
+        const int DELAY_PER_WRITE = 1;
         private SerialPort _serialPort;
         private readonly string _portName;
         private readonly int _baudRate;
@@ -29,6 +29,7 @@ namespace serial_communication_client.Serial
         private MessagingControl _currentControlMode = MessagingControl.None;
 
         private bool hasResponse        = false;
+        private bool endOfResponse      = false;
         private bool responsePrinted    = false;
         private string responsePayload  = null;
 
@@ -73,6 +74,12 @@ namespace serial_communication_client.Serial
             lastReceived = DateTime.Now;
 
             string data = _serialPort.ReadLine().Trim();
+
+            if (string.IsNullOrEmpty(data))
+            {
+                return;
+            }
+
             bool validCode = Enum.TryParse<MessagingControl>(data, out MessagingControl control) && Enum.IsDefined<MessagingControl>(control);
             if (validCode)
             {
@@ -84,8 +91,14 @@ namespace serial_communication_client.Serial
                 {   
                     Console.WriteLine($"<!> Invalid response control: { control }. Current control: { _currentControlMode }. Expected control = { SOH } ");
                     // treated as Invalid
-                    validCode = false;
+                 //   validCode = false;
+                    return;
                 } else {
+                    if (control == EOT)
+                    {
+                        endOfResponse = true;
+                    }
+
                     _currentControlMode = control;
                     return;
                 }
@@ -111,6 +124,7 @@ namespace serial_communication_client.Serial
                             LogFromSerial("(Response Payload) " + data);
                         }
                         break;
+                        break;
                     default:
                         break;
                 }
@@ -132,35 +146,39 @@ namespace serial_communication_client.Serial
             Reset();
             _currentCommandName = command.Name;
             Log("[Start Command] " + command.Name);
+            long startCommand = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+
             _serialPort.Write(command.Extract(), 0, command.Size);
 
             if (waitDuration > 0)
             {
-                Thread.Sleep(waitDuration);
+               // Thread.Sleep(waitDuration);
             }
 
             Thread.Sleep(DELAY_PER_WRITE);
 
-            bool responseReceived = WaitForResponse();
-
+            bool responseReceived = WaitForResponse( out long waitingForResponseDuration );
+            long commandDuration = DateTimeOffset.Now.ToUnixTimeMilliseconds() - startCommand;;
             if (responseReceived)
             {
                 Log($"[Response]: '{ responsePayload }'");
-                Log($"[End Command] { command.Name }");
+                Log($"[End Command] { command.Name } - { commandDuration } ms, waiting: { waitingForResponseDuration} ms");
                 
                 return responsePayload;
             }
             else
             {
-                throw new TimeoutException($"Response timeout while executing { _currentCommandName }");
+                throw new TimeoutException($"Response timeout while executing { _currentCommandName }. Waiting time: { commandDuration } ms");
             }
         }
 
-        private bool WaitForResponse()
+        private bool WaitForResponse( out long duration )
         {
+            duration = 0;
             long startedWaiting = DateTimeOffset.Now.ToUnixTimeMilliseconds();
-            while(!hasResponse)
+            while( !endOfResponse )
             {
+                // Console.WriteLine(" ..Wait.. ");
                 // check waiting time (ms)
                 long now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
                 if (now - startedWaiting > WAITING_INTERVAL)
@@ -169,7 +187,7 @@ namespace serial_communication_client.Serial
                     return false;
                 }
             }
-
+            duration = DateTimeOffset.Now.ToUnixTimeMilliseconds() - startedWaiting;
             return true;
         }
 
@@ -179,6 +197,7 @@ namespace serial_communication_client.Serial
             Log("___RESET_RESPONSE_DATA___");
             _currentControlMode = MessagingControl.None;
             _currentCommandName = CommandName.UNDEFINED;
+            endOfResponse = false;
             hasResponse = false;
             responsePrinted = false;
             responsePayload = null;
