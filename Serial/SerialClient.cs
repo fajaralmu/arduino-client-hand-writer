@@ -4,20 +4,22 @@ using System.IO.Ports;
 using System.Threading;
 using arduino_client_hand_writer.Serial;
 using serial_communication_client.Commands;
+using System.Linq;
 
 namespace serial_communication_client.Serial
 {
     public class SerialClient : IClient
     {
-        const MessagingControl SOH = MessagingControl.StartOfHeader;
-        const MessagingControl STX = MessagingControl.StartOfText;
-        const MessagingControl ETX = MessagingControl.EndOfText;
-        const MessagingControl EOT = MessagingControl.EndOfTransmision;
+        const MessagingControl SOH = MessagingControl.SOH;
+        const MessagingControl STX = MessagingControl.STX;
+        const MessagingControl ETX = MessagingControl.ETX;
+        const MessagingControl EOT = MessagingControl.EOT;
 
         const int DELAY_PER_WRITE = 1;
         private SerialPort _serialPort;
         private readonly string _portName;
         private readonly int _baudRate;
+        private readonly bool _showRawData;
 
         const int BEGIN_RESPONSE = -1;
         const int END_RESPONSE = 256;
@@ -35,14 +37,15 @@ namespace serial_communication_client.Serial
 
         private DateTime lastReceived  = default(DateTime);
 
-        private SerialClient(string portName, int baudRate)
+        private SerialClient(string portName, int baudRate, bool showRawData = false)
         {
             _portName = portName;
             _baudRate = baudRate;
+            _showRawData = showRawData;
         }
-        public static SerialClient Create(string portName, int baudRate)
+        public static SerialClient Create(string portName, int baudRate, bool showRawData = false )
         {
-            return new SerialClient(portName, baudRate);
+            return new SerialClient(portName, baudRate, showRawData);
         }
 
         public void Connect()
@@ -74,16 +77,21 @@ namespace serial_communication_client.Serial
             lastReceived = DateTime.Now;
 
             string data = _serialPort.ReadLine().Trim();
+            
+            if ( _showRawData )
+            {
+                Console.WriteLine("{raw}" + data);
+            }
 
             if (string.IsNullOrEmpty(data))
             {
                 return;
             }
 
-            bool validCode = Enum.TryParse<MessagingControl>(data, out MessagingControl control) && Enum.IsDefined<MessagingControl>(control);
+            bool validCode = ValidateControlValue( data, out MessagingControl control );
             if (validCode)
             {
-                LogFromSerial($"Control: {control} ({ data }) ");
+                LogFromSerial($"@{control}");
             }
             if (validCode)
             {
@@ -124,13 +132,24 @@ namespace serial_communication_client.Serial
                             LogFromSerial("(Response Payload) " + data);
                         }
                         break;
-                        break;
                     default:
                         break;
                 }
             }
 
 
+        }
+
+        private bool ValidateControlValue(string data, out MessagingControl control)
+        {
+            control = MessagingControl.Invalid;
+            MessagingControl[] result = Enum.GetValues<MessagingControl>().Where(e => e.ToString().Equals( data )).ToArray();
+            if (result.Length == 0)
+            {
+                return false;
+            }
+            control = result.First();
+            return true;
         }
 
         private void LogFromSerial(string value)
@@ -152,7 +171,7 @@ namespace serial_communication_client.Serial
 
             if (waitDuration > 0)
             {
-               // Thread.Sleep(waitDuration);
+                Thread.Sleep(waitDuration);
             }
 
             Thread.Sleep(DELAY_PER_WRITE);
@@ -162,7 +181,7 @@ namespace serial_communication_client.Serial
             if (responseReceived)
             {
                 Log($"[Response]: '{ responsePayload }'");
-                Log($"[End Command] { command.Name } - { commandDuration } ms, waiting: { waitingForResponseDuration} ms");
+                Log($"[End Command] { command.Name } - { commandDuration } ms, defined_delay:{ waitDuration } ms, waiting: { waitingForResponseDuration} ms");
                 
                 return responsePayload;
             }

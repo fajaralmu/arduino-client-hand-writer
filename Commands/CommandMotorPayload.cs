@@ -4,13 +4,13 @@ namespace serial_communication_client.Commands
 {
     public class CommandMotorPayload : CommandPayload
     {
-        const byte ADJUSTMENT = 8;
+        public const byte ANGLE_ADJUSTMENT = 0;
         public int Angle => _angle;
         private byte _angle;
 
         public static CommandMotorPayload NewCommand( HardwarePin pin, byte angle )
         {
-            byte adjustedAngle = (byte)(angle + ADJUSTMENT);
+            byte adjustedAngle = (byte)(angle + ANGLE_ADJUSTMENT);
             if (adjustedAngle > 250)
             {
                 throw new ArgumentOutOfRangeException("angle");

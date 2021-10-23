@@ -4,8 +4,8 @@ using System.Threading;
 using arduino_client_hand_writer.Serial;
 using MovementManager.Helper;
 using MovementManager.Model;
+using MovementManager.Service;
 using serial_communication_client;
-using serial_communication_client.Commands;
 using serial_communication_client.Serial;
 
 namespace MovementManager
@@ -15,8 +15,8 @@ namespace MovementManager
       
         const double PX_PER_CM = 37.795280352161;
         const double MAX_DEGREE = 180;
-        const double B1_LENGTH = 10;//(int)( 15.5 * PX_PER_CM );
-        const double B2_LENGTH = 10;//(int)( 13.5 * PX_PER_CM );
+        const double B1_LENGTH = 15.5;// 10;//(int)( 15.5 * PX_PER_CM );
+        const double B2_LENGTH = 13.5;// 10;//(int)( 13.5 * PX_PER_CM );
         const int PEN_FREE_ANGLE = 30;
         const double TOLERANCE = 0.1;
 
@@ -27,26 +27,29 @@ namespace MovementManager
         static double cos45 = MathHelper.Cos( 45 );
 
         static double verticalLength, horizontalLength;
-        static IClient client;
+        static IService service;
         static void Main(string[] args)
         {
            
             ConfigureLogger();
 
-            client = SerialClient.Create( "COM7", 9600 );
+            IClient client = SerialClient.Create( "COM7", 9600, false );
             // client = new MockClient();
-            client.Connect();
 
+            service = new ServiceImpl( client );
+            service.Connect();
             ResetHardware();
-          
-            if (false) 
+            
+        //    service.MoveMotor( HardwarePin.MOTOR_PEN_PIN, 90 );
+           if (false) 
                 Draw();
             
-            ResetHardware();
-
+           ResetHardware();
+          //  service.MoveMotor( HardwarePin.MOTOR_PEN_PIN, 10 );
             Console.WriteLine(" ======== END ========= ");
             Console.ReadLine();
-            client.Close();
+
+            service.Close();
 
         }
 
@@ -72,7 +75,7 @@ namespace MovementManager
                  //      Console.WriteLine($"point not feasible: {x}, {y}");
                     }
                 }
-                break;
+              //  break;
             }
 
             ToggleLedFinishOperation();
@@ -81,7 +84,7 @@ namespace MovementManager
 
         private static void ToggleLedFinishOperation()
         {
-            int delay = 10;
+            int delay = 5;
             for (var i = 0; i < 10; i++)
             {
                 ToggleLed( true, delay );
@@ -146,28 +149,26 @@ namespace MovementManager
             double tetha = CalculateTetha( alpha, prop.Beta );
 
             // Move arms
-            CommandMotorPayload cmdAlpha = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_A_PIN, (byte) alpha );
-            CommandMotorPayload cmdTetha = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_B_PIN, (byte) tetha );
-            client.Send( cmdAlpha, 500 );
-            client.Send( cmdTetha, 1500 );
+            service.MoveMotor( HardwarePin.MOTOR_A_PIN, (byte) alpha );
+            service.MoveMotor( HardwarePin.MOTOR_B_PIN, (byte) tetha );
         }
 
         private static void TogglePen()
         {
             ToggleLed( true );
-
-            CommandMotorPayload cmdPenDown = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_PEN_PIN, 0 );
-            client.Send( cmdPenDown, 1000 );
-            CommandMotorPayload cmdPenUp = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_PEN_PIN, PEN_FREE_ANGLE );
-            client.Send( cmdPenUp, 700 );
+            
+            HardwarePin pin = HardwarePin.MOTOR_PEN_PIN;
+            // move down pen
+            service.MoveMotor( pin, 0, 1000 );
+            // move up pen
+            service.MoveMotor( pin, PEN_FREE_ANGLE, 100 );
 
             ToggleLed( false );
         }
 
         private static void ToggleLed( bool on, int waitDuration = 0 )
         {
-            CommandLedPayload cmd = new CommandLedPayload( on ? CommandName.LED_ON : CommandName.LED_OFF, HardwarePin.DEFAULT_LED);
-            client.Send( cmd, waitDuration );
+            service.ToggleLed( HardwarePin.DEFAULT_LED, on, waitDuration );
         }
 
         static void ResetHardware()
@@ -176,14 +177,11 @@ namespace MovementManager
             ToggleLed( true, 1000 );
 
             // Reset ARM
-            CommandMotorPayload cmdArm1 = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_A_PIN, 0 );
-            CommandMotorPayload cmdArm2 = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_B_PIN, 0 );
-            client.Send( cmdArm1, 1000 );
-            client.Send( cmdArm2, 1000 );
+            service.MoveMotor( HardwarePin.MOTOR_A_PIN, 0, 1000 );
+            service.MoveMotor( HardwarePin.MOTOR_B_PIN, 0, 1000 );
 
             // Reset PEN 
-            CommandMotorPayload cmdPen = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_PEN_PIN, PEN_FREE_ANGLE );
-            client.Send( cmdPen, 1000 );
+            service.MoveMotor( HardwarePin.MOTOR_PEN_PIN, PEN_FREE_ANGLE, 1000 );
 
             ToggleLed( false, 1000 );
             Console.WriteLine(" ======= End Reset Hardware ======= ");

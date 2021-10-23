@@ -3,10 +3,11 @@ namespace serial_communication_client.Serial
    
     public enum MessagingControl : int
     {
-        StartOfHeader   = 01,
-        StartOfText     = 02,
-        EndOfText       = 03,
-        EndOfTransmision= 04,
-        None            = -1,
+        SOH = 01,
+        STX = 02,
+        ETX = 03,
+        EOT = 04,
+        None = 0,
+        Invalid = -1,
     }
 }
