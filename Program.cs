@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading;
 using arduino_client_hand_writer.Serial;
 using MovementManager.Helper;
@@ -29,13 +30,28 @@ namespace MovementManager
         static IClient client;
         static void Main(string[] args)
         {
-            
+           
+            ConfigureLogger();
+
             client = SerialClient.Create( "COM7", 9600 );
             // client = new MockClient();
             client.Connect();
 
             ResetHardware();
-          //  if (true)return;
+          
+            if (false) 
+                Draw();
+            
+            ResetHardware();
+
+            Console.WriteLine(" ======== END ========= ");
+            Console.ReadLine();
+            client.Close();
+
+        }
+
+        private static void Draw()
+        {
             verticalLength = CalculateVerticalLength();
             horizontalLength = CalculateHorizontalLength();  
             
@@ -56,23 +72,20 @@ namespace MovementManager
                  //      Console.WriteLine($"point not feasible: {x}, {y}");
                     }
                 }
+                break;
             }
 
             ToggleLedFinishOperation();
-
-            Console.WriteLine(" ======== END ========= ");
-            Console.ReadLine();
-            client.Close();
 
         }
 
         private static void ToggleLedFinishOperation()
         {
-            int delay = 50;
+            int delay = 10;
             for (var i = 0; i < 10; i++)
             {
                 ToggleLed( true, delay );
-                ToggleLed( false, delay );
+                ToggleLed( false, delay / 2 );
             }
             
         }
@@ -144,9 +157,9 @@ namespace MovementManager
             ToggleLed( true );
 
             CommandMotorPayload cmdPenDown = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_PEN_PIN, 0 );
-            client.Send( cmdPenDown, 700 );
+            client.Send( cmdPenDown, 1000 );
             CommandMotorPayload cmdPenUp = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_PEN_PIN, PEN_FREE_ANGLE );
-            client.Send( cmdPenUp, 500 );
+            client.Send( cmdPenUp, 700 );
 
             ToggleLed( false );
         }
@@ -157,21 +170,23 @@ namespace MovementManager
             client.Send( cmd, waitDuration );
         }
 
-
         static void ResetHardware()
         {
+            Console.WriteLine(" ======= Start Reset Hardware ======= ");
+            ToggleLed( true, 1000 );
+
             // Reset ARM
-            CommandMotorPayload cmdAlpha = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_A_PIN, 0 );
-            CommandMotorPayload cmdTetha = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_B_PIN, 0 );
-            client.Send( cmdAlpha, 500 );
-            client.Send( cmdTetha, 500 );
+            CommandMotorPayload cmdArm1 = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_A_PIN, 0 );
+            CommandMotorPayload cmdArm2 = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_B_PIN, 0 );
+            client.Send( cmdArm1, 1000 );
+            client.Send( cmdArm2, 1000 );
 
             // Reset PEN 
             CommandMotorPayload cmdPen = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_PEN_PIN, PEN_FREE_ANGLE );
-            client.Send( cmdPen, 500 );
+            client.Send( cmdPen, 1000 );
 
-            // Turn on LED
-            ToggleLed( false );
+            ToggleLed( false, 1000 );
+            Console.WriteLine(" ======= End Reset Hardware ======= ");
         }
 
         static MovementProperty CalculateMovement( double x, double y )
@@ -221,5 +236,20 @@ namespace MovementManager
             double lambda =  MathHelper.CosAngle(  MathHelper.Sin ( alpha ) );
             return (byte) ( lambda + beta );//+ 90;
         }
+
+        private static void ConfigureLogger()
+        {
+            //File
+            // _logFile = File.Create($"Logs/RoverSimulation-Log-{DateTime.Now.ToString("yyyy-MM-dd_HH.mm.ss")}.log");
+            // TextWriterTraceListener myTextListener = new TextWriterTraceListener(_logFile);
+            // Trace.Listeners.Add(myTextListener);
+            
+            //Console
+            TextWriterTraceListener writer = new TextWriterTraceListener(System.Console.Out);
+            Trace.Listeners.Add(writer);
+        }
+
     }
+
+    
 }

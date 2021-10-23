@@ -5,7 +5,7 @@ namespace serial_communication_client.Commands
 
     public class CommandPayload
     {
-        readonly CommandName name;
+        public CommandName Name { get; }
         
         // 0 -> Hardware PIN
         // 1 -> durationSec
@@ -16,12 +16,12 @@ namespace serial_communication_client.Commands
         public int Size { get => 2 + arguments.Length; }
         public CommandPayload(CommandName name, params byte[] arguments)
         {
-            this.name = name;
+            Name = name;
             this.arguments = arguments;
         }
         public CommandPayload(CommandName name, HardwarePin hardware, params byte[] arguments)
         {
-            this.name = name;
+            Name = name;
             this.arguments = BuildArgument( hardware, arguments );
         }
 
@@ -40,7 +40,7 @@ namespace serial_communication_client.Commands
         public byte[] Extract()
         {
             byte[] result = new byte[Size];
-            result[0] = (byte)name;
+            result[0] = (byte)Name;
             result[1] = (byte)arguments.Length;
             for (int i = 2; i < Size; i++)
             {

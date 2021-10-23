@@ -1,5 +1,6 @@
 namespace serial_communication_client{
     public enum CommandName {
+        UNDEFINED = -1,
         NONE = 48,
         ALARM = 1,
         PRINT_CHAR = 49,

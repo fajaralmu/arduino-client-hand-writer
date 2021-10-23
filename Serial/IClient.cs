@@ -6,6 +6,6 @@ namespace arduino_client_hand_writer.Serial
     {
          public void Connect();
          public void Close();
-         public void Send( CommandPayload cmd, int waitDuration = 0 );
+         public string Send( CommandPayload cmd, int waitDuration = 0 );
     }
 }
