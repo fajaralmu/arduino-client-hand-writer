@@ -1,11 +1,12 @@
 using System;
 using System.IO.Ports;
 using System.Threading;
+using arduino_client_hand_writer.Serial;
 using serial_communication_client.Commands;
 
-namespace MovementManager.Serial
+namespace serial_communication_client.Serial
 {
-    public class SerialClient
+    public class SerialClient : IClient
     {
         private SerialPort _serialPort;
         private readonly string _portName;
