@@ -41,7 +41,7 @@ namespace MovementManager
             ResetHardware();
             
         //    service.MoveMotor( HardwarePin.MOTOR_PEN_PIN, 90 );
-           if (false) 
+        //    if (false) 
                 Draw();
             
            ResetHardware();

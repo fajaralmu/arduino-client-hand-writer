@@ -1,6 +1,6 @@
 namespace serial_communication_client.Serial
 {
-   
+    // https://en.wikipedia.org/wiki/C0_and_C1_control_codes
     public enum MessagingControl : int
     {
         SOH = 01,
@@ -8,6 +8,8 @@ namespace serial_communication_client.Serial
         ETX = 03,
         EOT = 04,
         None = 0,
+
+        // generated ONLY from this application, not serial
         Invalid = -1,
     }
 }

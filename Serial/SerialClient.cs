@@ -143,6 +143,10 @@ namespace serial_communication_client.Serial
         private bool ValidateControlValue(string data, out MessagingControl control)
         {
             control = MessagingControl.Invalid;
+            if (string.IsNullOrEmpty( data ))
+            {
+                return false;
+            }
             MessagingControl[] result = Enum.GetValues<MessagingControl>().Where(e => e.ToString().Equals( data )).ToArray();
             if (result.Length == 0)
             {
@@ -169,19 +173,16 @@ namespace serial_communication_client.Serial
 
             _serialPort.Write(command.Extract(), 0, command.Size);
 
-            if (waitDuration > 0)
-            {
-                Thread.Sleep(waitDuration);
-            }
-
-            Thread.Sleep(DELAY_PER_WRITE);
-
-            bool responseReceived = WaitForResponse( out long waitingForResponseDuration );
+            bool responseReceived = WaitForResponse( out int waitingForResponseDuration );
+            
+            SleepIfNotNegative( waitDuration );
+            SleepIfNotNegative( DELAY_PER_WRITE );
+            
             long commandDuration = DateTimeOffset.Now.ToUnixTimeMilliseconds() - startCommand;;
             if (responseReceived)
             {
                 Log($"[Response]: '{ responsePayload }'");
-                Log($"[End Command] { command.Name } - { commandDuration } ms, defined_delay:{ waitDuration } ms, waiting: { waitingForResponseDuration} ms");
+                Log($"[End Command] { command.Name } - { commandDuration } ms, adjusted_delay_after_response:{ waitDuration } ms, waiting: { waitingForResponseDuration} ms");
                 
                 return responsePayload;
             }
@@ -191,7 +192,15 @@ namespace serial_communication_client.Serial
             }
         }
 
-        private bool WaitForResponse( out long duration )
+        private void SleepIfNotNegative(int waitDuration)
+        {
+            if (waitDuration > 0)
+            {
+                Thread.Sleep( waitDuration );
+            }
+        }
+
+        private bool WaitForResponse( out int duration )
         {
             duration = 0;
             long startedWaiting = DateTimeOffset.Now.ToUnixTimeMilliseconds();
@@ -202,11 +211,10 @@ namespace serial_communication_client.Serial
                 long now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
                 if (now - startedWaiting > WAITING_INTERVAL)
                 {
-                    // timeout error
                     return false;
                 }
             }
-            duration = DateTimeOffset.Now.ToUnixTimeMilliseconds() - startedWaiting;
+            duration = (int)( DateTimeOffset.Now.ToUnixTimeMilliseconds() - startedWaiting );
             return true;
         }
 
