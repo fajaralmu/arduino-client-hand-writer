@@ -16,7 +16,7 @@ namespace arduino_client_hand_writer.Serial
         {
 
         }
-        public void Send(CommandPayload cmd)
+        public void Send(CommandPayload cmd, int waitDuration = 0)
         {
 
         }
