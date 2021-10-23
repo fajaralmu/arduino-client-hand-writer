@@ -8,7 +8,7 @@ namespace serial_communication_client.Commands
         public int Angle => _angle;
         private byte _angle;
 
-        public static CommandMotorPayload NewCommand( byte pin, byte angle )
+        public static CommandMotorPayload NewCommand( HardwarePin pin, byte angle )
         {
             byte adjustedAngle = (byte)(angle + ADJUSTMENT);
             if (adjustedAngle > 250)
@@ -17,7 +17,7 @@ namespace serial_communication_client.Commands
             }
             return new CommandMotorPayload( pin, adjustedAngle );
         }
-        private CommandMotorPayload(byte pin, byte angle) : base(CommandName.MOVE_SERVO, pin,0,0,angle)
+        private CommandMotorPayload( HardwarePin pin, byte angle) : base( CommandName.MOVE_SERVO, pin, 0,0,angle)
         {
             _angle = angle;
         }

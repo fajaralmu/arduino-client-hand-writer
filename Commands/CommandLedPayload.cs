@@ -6,7 +6,7 @@ namespace serial_communication_client.Commands
         private byte _durationSec = 0;
         public CommandLedPayload(
             CommandName name, 
-            byte hardwarePin,
+            HardwarePin hardwarePin,
             byte durationSec = 0,
             byte intervalSec = 0)
             : base (name, hardwarePin, durationSec, intervalSec)

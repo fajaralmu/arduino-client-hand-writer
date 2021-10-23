@@ -3,16 +3,19 @@ using System.Threading;
 using MovementManager.Helper;
 using MovementManager.Model;
 using MovementManager.Serial;
+using serial_communication_client;
 using serial_communication_client.Commands;
 
 namespace MovementManager
 {
     class Program
     {
-        const int MOTOR_A_PIN = 9;
-        const int MOTOR_B_PIN = 10;
+      
+        const double PX_PER_CM = 37.795280352161;
         const int MAX_DEGREE = 180;
-        const int B1_LENGTH = 20, B2_LENGTH = 20;
+        const int B1_LENGTH = (int)( 15.5 * PX_PER_CM );
+        const int B2_LENGTH = (int)( 13.5 * PX_PER_CM );
+        const int PEN_FREE_ANGLE = 30;
         const double TOLERANCE = 0.5;
 
         static double verticalLength, horizontalLength;
@@ -23,16 +26,18 @@ namespace MovementManager
             client.Connect();
 
             ResetMotor();
+          //  if (true)return;
             verticalLength = VerticalLength();
             horizontalLength = HorizontalLength(); 
             double maxX = (horizontalLength - B1_LENGTH);
-            for (int x = 0; x < maxX; x++)
+             for (int y = B1_LENGTH; y < verticalLength; y++)
             {
-                for (int y = B1_LENGTH; y < verticalLength; y++)
+                for (int x = 0; x < maxX; x++)
                 {
-                    Move( x, y );
-                    Console.WriteLine( $"x: { x }, y: { y }" );
+                    MovementProperty prop =  Move( x, y );
+                    Console.WriteLine( $"x: { x }, y: { y }, alpha: { prop.Alpha }, beta: { prop.Beta }" );
                 }
+                Console.WriteLine("_______________");
             }
             Console.WriteLine(" ======== END ========= ");
             Console.ReadLine();
@@ -82,7 +87,7 @@ namespace MovementManager
             MovementProperty prop = CalculateMovement( x, y );
             if (null == prop)
             {
-                throw new ArgumentException("Point not feasible");
+                throw new ArgumentException($"Point not feasible: {x}, {y}");
             }
             MoveMotor( prop );
             return prop;
@@ -90,26 +95,34 @@ namespace MovementManager
 
         private static void MoveMotor(MovementProperty prop)
         {
+            Console.WriteLine(" move motor ");
             double alpha = prop.Alpha;
             double tetha = CalculateTetha( alpha, prop.Beta );
-            Console.WriteLine( $"Move motor with aplha: { alpha }, tetha: { tetha }");
 
-            CommandMotorPayload cmdAlpha = CommandMotorPayload.NewCommand( MOTOR_A_PIN, (byte) alpha );
-            CommandMotorPayload cmdTetha = CommandMotorPayload.NewCommand( MOTOR_B_PIN, (byte) tetha );
-            client.Send( cmdAlpha );
-            Thread.Sleep( 500 );
-            client.Send( cmdTetha );
-            Thread.Sleep( 500 );
+            // Move arms
+            CommandMotorPayload cmdAlpha = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_A_PIN, (byte) alpha );
+            CommandMotorPayload cmdTetha = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_B_PIN, (byte) tetha );
+            client.Send( cmdAlpha, 500 );
+            client.Send( cmdTetha, 1000 );
+
+            // Move pen DOWN
+            CommandMotorPayload cmdPenDown = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_PEN_PIN, 0 );
+            client.Send( cmdPenDown, 700 );
+            CommandMotorPayload cmdPenUp = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_PEN_PIN, PEN_FREE_ANGLE );
+            client.Send( cmdPenUp, 500 );
         }
 
         static void ResetMotor()
         {
-            CommandMotorPayload cmdAlpha = CommandMotorPayload.NewCommand( MOTOR_A_PIN, 0 );
-            CommandMotorPayload cmdTetha = CommandMotorPayload.NewCommand( MOTOR_B_PIN, 0 );
-            client.Send( cmdAlpha );
-            Thread.Sleep( 500 );
-            client.Send( cmdTetha );
-            Thread.Sleep( 500 );
+            // Reset arms
+            CommandMotorPayload cmdAlpha = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_A_PIN, 0 );
+            CommandMotorPayload cmdTetha = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_B_PIN, 0 );
+            client.Send( cmdAlpha, 500 );
+            client.Send( cmdTetha, 500 );
+
+            // Reset pen
+            CommandMotorPayload cmdPen = CommandMotorPayload.NewCommand( HardwarePin.MOTOR_PEN_PIN, PEN_FREE_ANGLE );
+            client.Send( cmdPen, 500 );
         }
 
         static MovementProperty CalculateMovement( int x, int y )

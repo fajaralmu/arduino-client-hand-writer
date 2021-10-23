@@ -1,5 +1,6 @@
 using System;
 using System.IO.Ports;
+using System.Threading;
 using serial_communication_client.Commands;
 
 namespace MovementManager.Serial
@@ -49,9 +50,14 @@ namespace MovementManager.Serial
          //   Console.WriteLine($"Serial Port { _portName } >> " + data);
         }
 
-        public void Send( CommandPayload command )
+        public void Send( CommandPayload command, int waitDuration = 0 )
         {
             _serialPort.Write( command.Extract(), 0, command.Size );
+
+            if (waitDuration > 0)
+            {
+                Thread.Sleep( waitDuration );
+            }
         }
     }
 }
