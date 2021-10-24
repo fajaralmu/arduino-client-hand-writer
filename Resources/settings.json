@@ -6,7 +6,7 @@
     "armPenDownAngle": 30,
     
     "delayBeforeTogglePen": 500,
-    "tolerance": 1,
+    "tolerance": 0.2,
     
     "portName": "COM7",
     "baudRate": 9600

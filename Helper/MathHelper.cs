@@ -38,5 +38,10 @@ namespace MovementManager.Helper
         {
             return Math.Tan( Rad( angle ) );
         }
+
+        internal static bool InRange(double val, double destination, double tolerance)
+        {
+            return val > destination - tolerance && val < destination + tolerance;
+        }
     }
 }

@@ -89,11 +89,12 @@ namespace MovementManager
                     {
                         MovementProperty prop = GetMovementProperty(x, y);
                         movementProperties.Add(prop);
-                        Console.WriteLine($"[{ x }, y: { y }] alpha: { prop.Alpha }, beta: { prop.Beta }");
+                        Console.WriteLine($"[x: { x }, y: { y }] alpha: { prop.Alpha }, beta: { prop.Beta }");
+                        Console.WriteLine($"[x: { (byte) prop.X }, y: { (byte) prop.Y }]");
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine($"[Point Error] {x}, {y}, error: {e.Message}");
+                     //   Console.WriteLine($"[Point Error] {x}, {y}, error: {e.Message}");
                     }
                 }
                 //  break;
@@ -108,12 +109,17 @@ namespace MovementManager
 
         private static void SaveToFile(ICollection<MovementProperty> movementProperties)
         {
+        
            string json = JsonSerializer.Serialize<ICollection<MovementProperty>>(movementProperties, new JsonSerializerOptions
                     {
                         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                     });
+           string jsonSetting = JsonSerializer.Serialize<Setting>(setting, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    });
             File.WriteAllText($"Output/path_{DateTime.Now:HHmmss}.json", json);
-            File.WriteAllText($"Output/data.js", "const calculatedPaths = " + json );
+            File.WriteAllText($"Output/data.js", "const calculatedPaths = " + json +";\n const appSettings = "+jsonSetting+";" );
         }
 
         private static void ExecuteDraw(ICollection<MovementProperty> movementProperties)
@@ -162,11 +168,11 @@ namespace MovementManager
 
         static double CalculateVerticalLength()
         {
-            return ( setting.ArmBaseLength + setting.ArmSecondaryLength ) * cos45;
+            return  setting.ArmBaseLength + setting.ArmSecondaryLength ;
         }
         static double CalculateHorizontalLength()
         {
-            return setting.ArmSecondaryLength;// * cos45 + setting.ArmSecondaryLength * cos45;
+            return  setting.ArmBaseLength + setting.ArmSecondaryLength ;
         }
 
         ///////////////////////////// Movement Model //////////////////////////////
@@ -235,16 +241,12 @@ namespace MovementManager
                 for (double beta = 0; beta < 45; beta++)
                 {
                     double calX = CalculateX(alpha, beta);
-                    if (InRange(calX, x, setting.Tolerance))
+                    if (MathHelper.InRange(calX, x, setting.Tolerance))
                     {
                         double calY = CalculateY(alpha, beta);
-                        //   Console.WriteLine($"[{ x }, { y }] Trial => x: { calX }, y: { calY }" );
-                        if (InRange(calY, y, setting.Tolerance))
+                        if (MathHelper.InRange(calY, y, setting.Tolerance))
                         {
-                            // Console.WriteLine(" FOUND XY " + calX);
-                            // Console.WriteLine(" FOUND calculating " + calX);
-                            // Console.WriteLine( $" Aplha: { alpha } Beta: { beta } ");
-                            Console.WriteLine($"<!> [{ x }, { y }] Trial => x: { calX }, y: { calY }");
+                       //     Console.WriteLine($"<!> [{ x }, { y }] Trial => x: { calX }, y: { calY }");
                             double theta = CalculateTetha(alpha, beta);
                             double omega = CalculateOmega(alpha);
                             return new MovementProperty(calX, calY, alpha, beta, theta, omega);
@@ -255,10 +257,7 @@ namespace MovementManager
             // Console.WriteLine($" not found : {x}, {y}");
             return null;
         }
-        static bool InRange(double val, double destination, double tolerance)
-        {
-            return val > destination - tolerance && val < destination + tolerance;
-        }
+       
         static double CalculateX(double alpha, double beta)
         {
             double baseArmLengthHorizontal      = setting.ArmBaseLength * MathHelper.Cos(alpha);

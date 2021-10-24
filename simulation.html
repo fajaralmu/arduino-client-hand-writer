@@ -5,8 +5,8 @@
     <title>Movement Simulator</title>
     <script src="Output/data.js"></script>
     <script type="text/javascript">
-      const PX_PER_CM = 10;
-      const setting = {
+      const PX_PER_CM = 1;
+      let setting = {
         armBaseLength: 15.5 * PX_PER_CM,
         armSecondaryLength: 16.3 * PX_PER_CM,
 
@@ -20,10 +20,17 @@
         baudRate: 9600,
       };
 
+      setting = appSettings;
+      setting.armBaseLength *= PX_PER_CM;
+      setting.armSecondaryLength *= PX_PER_CM;
+
       const width = 2 * (setting.armBaseLength + setting.armSecondaryLength);
       const height = setting.armBaseLength + setting.armSecondaryLength;
       let paths = [{"alpha":41,"beta":42,"omega":34,"theta":91,"x":0.886277379160064,"y":13.514567981147152,"xString":"0.89","yString":"13.51"}];
+
+      // Get data from included js
       paths = calculatedPaths;
+     
 
       function Cos(angle) {
         return Math.cos(rad(angle));
@@ -49,7 +56,7 @@
         padding: 50px;
       }
       .small {
-        font: italic 20px sans-serif;
+        font: italic 5px sans-serif;
       }
     </style>
   </head>
@@ -109,7 +116,12 @@
                         L ${baseArmXAdjusted} ${baseArmYAdjusted} 
                         L ${secondaryArmXAdjusted} ${secondaryArmYAdjusted}`;
         console.log();
+        const calX = CalculateX(path.alpha, path.beta);
+        const calY = CalculateY(path.alpha, path.beta);
+        
+
         console.log("Expected point", path.x  * PX_PER_CM, path.y  * PX_PER_CM);
+        console.log("CALCULATED point", calX, calY);
         console.log("Actual point", secondaryArmXAdjusted, secondaryArmYAdjusted);
         const pathElement = commonPath(pathData);
         pathContent.appendChild(pathElement);
@@ -141,9 +153,26 @@
         }, 500);
       }
 
+      /////
+
+      function CalculateY(alpha, beta)
+        {
+            let baseArmLengthVertical      = setting.armBaseLength * Sin(alpha);
+            let secondaryArmLengthVertical =  setting.armSecondaryAngleAdjustment * Sin(beta);
+
+            return baseArmLengthVertical + secondaryArmLengthVertical;
+        }
+
+        function CalculateX(alpha, beta)
+        {
+            let baseArmLengthHorizontal      = setting.armBaseLength * Cos(alpha);
+            let secondaryArmLengthHorizontal = setting.armSecondaryAngleAdjustment * Cos(beta);
+            const maxHor = setting.armBaseLength + setting.armSecondaryLength;
+            return maxHor - baseArmLengthHorizontal - secondaryArmLengthHorizontal;
+        }
       /////////////// Svg Elements ///////////////
 
-      function createCircle(x, y, color, r = 3) {
+      function createCircle(x, y, color, r = 0.4) {
         const circle = createSvgElement("circle");
         circle.setAttribute("cx", x);
         circle.setAttribute("cy", y);
@@ -165,7 +194,7 @@
         const path = createSvgElement("path");
         path.setAttribute("d", d);
         path.setAttribute("stroke", "#000");
-        path.setAttribute("stroke-width", "3");
+        path.setAttribute("stroke-width", "1");
         path.setAttribute("fill", "none");
         return path;
       }
