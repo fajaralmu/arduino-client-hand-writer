@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
 using arduino_client_hand_writer.Serial;
@@ -12,74 +14,104 @@ namespace MovementManager
 {
     class Program
     {
-      
+
         const double PX_PER_CM = 37.795280352161;
-        const double MAX_DEGREE = 180;
-        const double B1_LENGTH = 15.5;// 10;//(int)( 15.5 * PX_PER_CM );
-        const double B2_LENGTH = 13.5;// 10;//(int)( 13.5 * PX_PER_CM );
-        const int PEN_FREE_ANGLE = 30;
-        const double TOLERANCE = 0.1;
 
         static double maxX;
         static double maxY;
         static double minX = 0;
-        static double minY = B1_LENGTH;
-        static double cos45 = MathHelper.Cos( 45 );
+        static double minY;
+        static double cos45 = MathHelper.Cos(45);
 
         static double verticalLength, horizontalLength;
-        static IService service;
+
+        static Motor baseMotorComponent, secondaryMotorComponent, penMotorComponent;
+        static Led ledComponent;
+
+
+        static Setting setting;
+
         static void Main(string[] args)
         {
-           
             ConfigureLogger();
+            
+            setting = Setting.FromFile("Resources/settings.json");
 
-            IClient client = SerialClient.Create( "COM7", 9600, false );
+            IClient client = SerialClient.Create(setting.PortName, setting.BaudRate, false);
             // client = new MockClient();
 
-            service = new ServiceImpl( client );
+            IService service = new ServiceImpl(client);
             service.Connect();
+
+            InitComponent( service );
+
+            ResetHardware();
+
+            Draw();
+
             ResetHardware();
             
-        //    service.MoveMotor( HardwarePin.MOTOR_PEN_PIN, 90 );
-        //    if (false) 
-                Draw();
-            
-           ResetHardware();
-          //  service.MoveMotor( HardwarePin.MOTOR_PEN_PIN, 10 );
+            service.Close();
+
             Console.WriteLine(" ======== END ========= ");
             Console.ReadLine();
 
-            service.Close();
+        }
 
+        private static void InitComponent(IService service)
+        {
+            
+            baseMotorComponent      = new Motor(HardwarePin.MOTOR_A_PIN, service) { EnableStepMove = true, AngleStep = 10 };
+            secondaryMotorComponent = new Motor(HardwarePin.MOTOR_B_PIN, service) { EnableStepMove = true, AngleStep = 10 };
+            penMotorComponent       = new Motor(HardwarePin.MOTOR_PEN_PIN, service);
+            ledComponent            = new Led(HardwarePin.DEFAULT_LED, service);
         }
 
         private static void Draw()
         {
             verticalLength = CalculateVerticalLength();
-            horizontalLength = CalculateHorizontalLength();  
-            
+            horizontalLength = CalculateHorizontalLength();
+
             maxX = horizontalLength;
             maxY = verticalLength;
 
-            Console.WriteLine( $"MAX Horizontal Length: { maxX }, MAX Vertical Length: { maxY } ");
+            minY = setting.ArmBaseLength;
 
+            Console.WriteLine($"MAX Horizontal Length: { maxX }, MAX Vertical Length: { maxY } ");
+
+            ICollection<MovementProperty> movementProperties = new LinkedList<MovementProperty>();
             for (double y = minY; y < maxY; y++)
             {
                 for (double x = minX; x < maxX; x++)
                 {
-                    try {
-                        MovementProperty prop =  DrawPoint( x, y );
-                        Console.WriteLine( $"[{ x }, y: { y }] alpha: { prop.Alpha }, beta: { prop.Beta }" );
-                    } catch (Exception)
+                    try
                     {
-                 //      Console.WriteLine($"point not feasible: {x}, {y}");
+                        MovementProperty prop = GetMovementProperty(x, y);
+                        movementProperties.Add(prop);
+                        Console.WriteLine($"[{ x }, y: { y }] alpha: { prop.Alpha }, beta: { prop.Beta }");
+                    }
+                    catch (Exception)
+                    {
+                        Console.WriteLine($"point not feasible: {x}, {y}");
                     }
                 }
-              //  break;
+                //  break;
             }
+
+            ExecuteDraw(movementProperties);
 
             ToggleLedFinishOperation();
 
+        }
+
+        private static void ExecuteDraw(ICollection<MovementProperty> movementProperties)
+        {
+            foreach (MovementProperty prop in movementProperties)
+            {
+                MoveArm(prop);
+                Thread.Sleep( setting.DelayBeforeTogglePen );
+                TogglePen();
+            }
         }
 
         private static void ToggleLedFinishOperation()
@@ -87,17 +119,17 @@ namespace MovementManager
             int delay = 5;
             for (var i = 0; i < 10; i++)
             {
-                ToggleLed( true, delay );
-                ToggleLed( false, delay / 2 );
+                ToggleLed(true, delay);
+                ToggleLed(false, delay / 2);
             }
-            
+
         }
 
-        static bool ValidateX( double x )
+        static bool ValidateX(double x)
         {
-            double maxX = (horizontalLength - B1_LENGTH);
+            double maxX = (horizontalLength - setting.ArmBaseLength);
             bool result = x >= minX && x <= maxX;
-         //   Console.WriteLine($"X = { x } min: { 0 } max: { maxX } -valid = { result }");
+            //   Console.WriteLine($"X = { x } min: { 0 } max: { maxX } -valid = { result }");
             if (!result)
             {
                 throw new ArgumentException($"Invalid X: { x }");
@@ -105,10 +137,10 @@ namespace MovementManager
 
             return result;
         }
-        static bool ValidateY( double y )
+        static bool ValidateY(double y)
         {
             bool result = y >= minY && y <= maxY;
-        //    Console.WriteLine($"Y = { y } min: { B1_LENGTH } max: { verticalLength } -valid = { result }");
+            //    Console.WriteLine($"Y = { y } min: { B1_LENGTH } max: { verticalLength } -valid = { result }");
             if (!result)
             {
                 throw new ArgumentException($"Invalid Y: { y }");
@@ -119,26 +151,25 @@ namespace MovementManager
 
         static double CalculateVerticalLength()
         {
-            return ( B1_LENGTH + B2_LENGTH ) *  cos45;
+            return ( setting.ArmBaseLength + setting.ArmSecondaryLength ) * cos45;
         }
         static double CalculateHorizontalLength()
         {
-            return B1_LENGTH * cos45 + B2_LENGTH *  cos45;
+            return setting.ArmBaseLength * cos45 + setting.ArmSecondaryLength * cos45;
         }
-       
+
         ///////////////////////////// Movement Model //////////////////////////////
 
-        static MovementProperty DrawPoint( double x, double y )
+        static MovementProperty GetMovementProperty(double x, double y)
         {
-            ValidateX( x );
-            ValidateY( y );
-            MovementProperty prop = CalculateMovement( x, y );
+            ValidateX(x);
+            ValidateY(y);
+            MovementProperty prop = CalculateMovement(x, y);
             if (null == prop)
             {
                 throw new ArgumentException($"Point not feasible: {x}, {y}");
             }
-            MoveArm( prop );
-            TogglePen();
+
             return prop;
         }
 
@@ -146,50 +177,48 @@ namespace MovementManager
         {
             Console.WriteLine($"Move motor ({prop.XString}, {prop.YString})");
             double alpha = prop.Alpha;
-            double tetha = CalculateTetha( alpha, prop.Beta );
+            double tetha = CalculateTetha(alpha, prop.Beta) + setting.ArmSecondaryAngleAdjustment;
 
             // Move arms
-            service.MoveMotor( HardwarePin.MOTOR_A_PIN, (byte) alpha );
-            service.MoveMotor( HardwarePin.MOTOR_B_PIN, (byte) tetha );
+            baseMotorComponent.Move((byte)alpha);
+            secondaryMotorComponent.Move((byte)tetha);
         }
 
         private static void TogglePen()
         {
-            ToggleLed( true );
-            
-            HardwarePin pin = HardwarePin.MOTOR_PEN_PIN;
-            // move down pen
-            service.MoveMotor( pin, 0, 1000 );
-            // move up pen
-            service.MoveMotor( pin, PEN_FREE_ANGLE, 100 );
+            ToggleLed(true);
 
-            ToggleLed( false );
+            // move down pen
+            penMotorComponent.Move((byte) setting.ArmPenDownAngle, 1000);
+            penMotorComponent.Move(0, 500);
+
+            ToggleLed(false);
         }
 
-        private static void ToggleLed( bool on, int waitDuration = 0 )
+        private static void ToggleLed(bool on, int waitDuration = 0)
         {
-            service.ToggleLed( HardwarePin.DEFAULT_LED, on, waitDuration );
+            ledComponent.Toggle(on, waitDuration);
         }
 
         static void ResetHardware()
         {
             Console.WriteLine(" ======= Start Reset Hardware ======= ");
-            ToggleLed( true, 1000 );
+            ToggleLed(true, 1000);
 
             // Reset ARM
-            service.MoveMotor( HardwarePin.MOTOR_A_PIN, 0, 1000 );
-            service.MoveMotor( HardwarePin.MOTOR_B_PIN, 0, 1000 );
+            baseMotorComponent.Move(0, 1000);
+            secondaryMotorComponent.Move(0, 1000);
 
             // Reset PEN 
-            service.MoveMotor( HardwarePin.MOTOR_PEN_PIN, PEN_FREE_ANGLE, 1000 );
+            penMotorComponent.Move(0, 1000);
 
-            ToggleLed( false, 1000 );
+            ToggleLed(false, 1000);
             Console.WriteLine(" ======= End Reset Hardware ======= ");
         }
 
-        static MovementProperty CalculateMovement( double x, double y )
+        static MovementProperty CalculateMovement(double x, double y)
         {
-            
+
             for (double alpha = 0; alpha < 180; alpha++)
             {
                 double calX = -1;
@@ -197,42 +226,42 @@ namespace MovementManager
 
                 for (double beta = 0; beta < 45; beta++)
                 {
-                    calX = CalculateX( alpha, beta );
-                    if ( InRange( calX, x, TOLERANCE ) )
+                    calX = CalculateX(alpha, beta);
+                    if (InRange(calX, x, setting.Tolerance))
                     {
-                        calY = CalculateY( alpha, beta );
-                     //   Console.WriteLine($"[{ x }, { y }] Trial => x: { calX }, y: { calY }" );
-                        if ( InRange( calY, y, TOLERANCE ) )
+                        calY = CalculateY(alpha, beta);
+                        //   Console.WriteLine($"[{ x }, { y }] Trial => x: { calX }, y: { calY }" );
+                        if (InRange(calY, y, setting.Tolerance))
                         {
                             // Console.WriteLine(" FOUND XY " + calX);
                             // Console.WriteLine(" FOUND calculating " + calX);
                             // Console.WriteLine( $" Aplha: { alpha } Beta: { beta } ");
-                            Console.WriteLine($"<!> [{ x }, { y }] Trial => x: { calX }, y: { calY }" );
-                            return new MovementProperty( calX, calY, alpha, beta );
+                            Console.WriteLine($"<!> [{ x }, { y }] Trial => x: { calX }, y: { calY }");
+                            return new MovementProperty(calX, calY, alpha, beta);
                         }
-                     }
+                    }
                 }
             }
             // Console.WriteLine($" not found : {x}, {y}");
             return null;
         }
-        static bool InRange( double val, double destination, double tolerance )
+        static bool InRange(double val, double destination, double tolerance)
         {
             return val > destination - tolerance && val < destination + tolerance;
         }
-        static double CalculateX( double alpha, double beta )
+        static double CalculateX(double alpha, double beta)
         {
-            return horizontalLength - B1_LENGTH *  MathHelper.Cos( alpha ) - B2_LENGTH *  MathHelper.Cos ( beta );
+            return horizontalLength - setting.ArmBaseLength * MathHelper.Cos(alpha) - setting.ArmSecondaryAngleAdjustment * MathHelper.Cos(beta);
         }
         private static double CalculateY(double alpha, double beta)
         {
-            return B1_LENGTH *  MathHelper.Sin( alpha ) + B2_LENGTH *  MathHelper.Sin( beta );
+            return setting.ArmBaseLength * MathHelper.Sin(alpha) + setting.ArmSecondaryAngleAdjustment * MathHelper.Sin(beta);
         }
 
         private static byte CalculateTetha(double alpha, double beta)
         {
-            double lambda =  MathHelper.CosAngle(  MathHelper.Sin ( alpha ) );
-            return (byte) ( lambda + beta );//+ 90;
+            double lambda = MathHelper.CosAngle(MathHelper.Sin(alpha));
+            return (byte)(lambda + beta);//+ 90;
         }
 
         private static void ConfigureLogger()
@@ -241,7 +270,7 @@ namespace MovementManager
             // _logFile = File.Create($"Logs/RoverSimulation-Log-{DateTime.Now.ToString("yyyy-MM-dd_HH.mm.ss")}.log");
             // TextWriterTraceListener myTextListener = new TextWriterTraceListener(_logFile);
             // Trace.Listeners.Add(myTextListener);
-            
+
             //Console
             TextWriterTraceListener writer = new TextWriterTraceListener(System.Console.Out);
             Trace.Listeners.Add(writer);
@@ -249,5 +278,5 @@ namespace MovementManager
 
     }
 
-    
+
 }

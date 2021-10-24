@@ -29,18 +29,7 @@ namespace  MovementManager.Service
         { 
             CommandMotorPayload command = CommandMotorPayload.NewCommand( pin, angle );
             _client.Send( command, 0 );
-
-            Console.WriteLine("--check servo angle--");
-
-            int latestAngle = ReadMotorAngle( pin );
-
-            while( latestAngle != angle )
-            {
-                Console.WriteLine("wait latest angle: "+ latestAngle);
-                latestAngle = ReadMotorAngle( pin );
-            }
-
-            Console.WriteLine($"END MOVE SERVO { pin } to angle: { angle }, waiting for { waitDuration } ms");
+            
             Thread.Sleep( waitDuration );
         }
 

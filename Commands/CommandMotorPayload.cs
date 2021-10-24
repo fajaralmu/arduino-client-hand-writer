@@ -7,6 +7,7 @@ namespace serial_communication_client.Commands
         public const byte ANGLE_ADJUSTMENT = 0;
         public int Angle => _angle;
         private byte _angle;
+        public HardwarePin Pin {get;}
 
         public static CommandMotorPayload NewCommand( HardwarePin pin, byte angle )
         {
@@ -19,6 +20,7 @@ namespace serial_communication_client.Commands
         }
         private CommandMotorPayload( HardwarePin pin, byte angle) : base( CommandName.MOVE_SERVO, pin, 0,0,angle)
         {
+             Pin = pin;
             _angle = angle;
         }
     }
