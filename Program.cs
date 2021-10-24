@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using arduino_client_hand_writer.Serial;
 using MovementManager.Helper;
 using MovementManager.Model;
@@ -36,36 +37,45 @@ namespace MovementManager
         static void Main(string[] args)
         {
             ConfigureLogger();
-            
+
             setting = Setting.FromFile("Resources/settings.json");
 
             IClient client = SerialClient.Create(setting.PortName, setting.BaudRate, false);
-            client = new MockClient();
+            //client = new MockClient();
 
             IService service = new ServiceImpl(client);
             service.Connect();
 
-            InitComponent( service );
-
-          //  ResetHardware();
-
-            Draw();
-
-            // ResetHardware();
+            InitComponent(service);
+            while(true){
+                ToggleLed(true);
+            baseMotorComponent.Move( 0 );
             
-            service.Close();
+            ToggleLed(false);
+            baseMotorComponent.Move( 90 );
+            }
+            Task.Run(() =>
+            {
+                //ResetHardware();
+                if ( true ) return;
+                Draw();
+                ResetHardware();
+                service.Close();
 
-            Console.WriteLine(" ======== END ========= ");
+                 Console.WriteLine(" ======== END ========= ");
+            });
+
+           
             Console.ReadLine();
 
         }
 
         private static void InitComponent(IService service)
         {
-            baseMotorComponent      = new Motor(HardwarePin.MOTOR_A_PIN, service) { EnableStepMove = true, AngleStep = 10 };
+            baseMotorComponent = new Motor(HardwarePin.MOTOR_A_PIN, service) { EnableStepMove = true, AngleStep = 10 };
             secondaryMotorComponent = new Motor(HardwarePin.MOTOR_B_PIN, service) { EnableStepMove = true, AngleStep = 10 };
-            penMotorComponent       = new Motor(HardwarePin.MOTOR_PEN_PIN, service);
-            ledComponent            = new Led(HardwarePin.DEFAULT_LED, service);
+            penMotorComponent = new Motor(HardwarePin.MOTOR_PEN_PIN, service);
+            ledComponent = new Led(HardwarePin.DEFAULT_LED, service);
         }
 
         private static void Draw()
@@ -89,19 +99,20 @@ namespace MovementManager
                     {
                         MovementProperty prop = GetMovementProperty(x, y);
                         movementProperties.Add(prop);
+
                         Console.WriteLine($"[x: { x }, y: { y }] alpha: { prop.Alpha }, beta: { prop.Beta }");
-                        Console.WriteLine($"[x: { (byte) prop.X }, y: { (byte) prop.Y }]");
+                        Console.WriteLine($"[x: { (byte)prop.X }, y: { (byte)prop.Y }]");
                     }
                     catch (Exception e)
                     {
-                     //   Console.WriteLine($"[Point Error] {x}, {y}, error: {e.Message}");
+                        //   Console.WriteLine($"[Point Error] {x}, {y}, error: {e.Message}");
                     }
                 }
                 //  break;
             }
 
             SaveToFile(movementProperties);
-      //      ExecuteDraw(movementProperties);
+            ExecuteDraw(movementProperties);
 
             ToggleLedFinishOperation();
 
@@ -109,17 +120,14 @@ namespace MovementManager
 
         private static void SaveToFile(ICollection<MovementProperty> movementProperties)
         {
-        
-           string json = JsonSerializer.Serialize<ICollection<MovementProperty>>(movementProperties, new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    });
-           string jsonSetting = JsonSerializer.Serialize<Setting>(setting, new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                    });
-            File.WriteAllText($"Output/path_{DateTime.Now:HHmmss}.json", json);
-            File.WriteAllText($"Output/data.js", "const calculatedPaths = " + json +";\n const appSettings = "+jsonSetting+";" );
+
+            string jsonMovements = JsonHelper.ToJson(movementProperties);
+            string jsonSetting = JsonHelper.ToJson(setting);
+            string content = $" const calculatedPaths = {jsonMovements};\n " +
+                                      $" const appSettings = {jsonSetting};";
+
+            File.WriteAllText($"Output/path_{DateTime.Now:HHmmss}.json", jsonMovements);
+            File.WriteAllText($"Output/data.js", content);
         }
 
         private static void ExecuteDraw(ICollection<MovementProperty> movementProperties)
@@ -127,7 +135,7 @@ namespace MovementManager
             foreach (MovementProperty prop in movementProperties)
             {
                 MoveArm(prop);
-                Thread.Sleep( setting.DelayBeforeTogglePen );
+                Thread.Sleep(setting.DelayBeforeTogglePen);
                 TogglePen();
             }
         }
@@ -168,11 +176,11 @@ namespace MovementManager
 
         static double CalculateVerticalLength()
         {
-            return  setting.ArmBaseLength + setting.ArmSecondaryLength ;
+            return setting.ArmBaseLength + setting.ArmSecondaryLength;
         }
         static double CalculateHorizontalLength()
         {
-            return  setting.ArmBaseLength + setting.ArmSecondaryLength ;
+            return setting.ArmBaseLength + setting.ArmSecondaryLength;
         }
 
         ///////////////////////////// Movement Model //////////////////////////////
@@ -193,11 +201,11 @@ namespace MovementManager
         private static void MoveArm(MovementProperty prop)
         {
             Console.WriteLine($"Move motor ({prop.XString}, {prop.YString})");
-            
+
             // Move arms
-            baseMotorComponent.Move((byte) prop.Alpha);
+            baseMotorComponent.Move((byte)prop.Alpha);
             // secondaryMotorComponent.Move((byte) prop.Theta);
-            secondaryMotorComponent.Move((byte) prop.Omega);
+            secondaryMotorComponent.Move((byte)(prop.Beta + prop.Omega));
         }
 
         private static void TogglePen()
@@ -205,7 +213,7 @@ namespace MovementManager
             ToggleLed(true);
 
             // move down pen
-            penMotorComponent.Move((byte) setting.ArmPenDownAngle, 1000);
+            penMotorComponent.Move((byte)setting.ArmPenDownAngle, 1000);
             penMotorComponent.Move(0, 500);
 
             ToggleLed(false);
@@ -246,7 +254,7 @@ namespace MovementManager
                         double calY = CalculateY(alpha, beta);
                         if (MathHelper.InRange(calY, y, setting.Tolerance))
                         {
-                       //     Console.WriteLine($"<!> [{ x }, { y }] Trial => x: { calX }, y: { calY }");
+                            //     Console.WriteLine($"<!> [{ x }, { y }] Trial => x: { calX }, y: { calY }");
                             double theta = CalculateTetha(alpha, beta);
                             double omega = CalculateOmega(alpha);
                             return new MovementProperty(calX, calY, alpha, beta, theta, omega);
@@ -257,18 +265,18 @@ namespace MovementManager
             // Console.WriteLine($" not found : {x}, {y}");
             return null;
         }
-       
+
         static double CalculateX(double alpha, double beta)
         {
-            double baseArmLengthHorizontal      = setting.ArmBaseLength * MathHelper.Cos(alpha);
-            double secondaryArmLengthHorizontal = setting.ArmSecondaryAngleAdjustment * MathHelper.Cos(beta);
-            
+            double baseArmLengthHorizontal = setting.ArmBaseLength * MathHelper.Cos(alpha);
+            double secondaryArmLengthHorizontal = setting.ArmSecondaryLength * MathHelper.Cos(beta);
+
             return horizontalLength - baseArmLengthHorizontal - secondaryArmLengthHorizontal;
         }
         private static double CalculateY(double alpha, double beta)
         {
-            double baseArmLengthVertical      = setting.ArmBaseLength * MathHelper.Sin(alpha);
-            double secondaryArmLengthVertical =  setting.ArmSecondaryAngleAdjustment * MathHelper.Sin(beta);
+            double baseArmLengthVertical = setting.ArmBaseLength * MathHelper.Sin(alpha);
+            double secondaryArmLengthVertical = setting.ArmSecondaryLength * MathHelper.Sin(beta);
 
             return baseArmLengthVertical + secondaryArmLengthVertical;
         }
@@ -281,9 +289,9 @@ namespace MovementManager
         // relative angle from base arm latest position against x axis
         private static byte CalculateOmega(double alpha)
         {
-            double p = setting.ArmBaseLength / MathHelper.Tan( alpha );
-            double horArmBaseLength  = setting.ArmBaseLength * MathHelper.Sin( alpha );
-            return (byte) MathHelper.SinAngle( horArmBaseLength / p );
+            double p = setting.ArmBaseLength / MathHelper.Tan(alpha);
+            double horArmBaseLength = setting.ArmBaseLength * MathHelper.Sin(alpha);
+            return (byte)MathHelper.SinAngle(horArmBaseLength / p);
         }
 
         private static void ConfigureLogger()
