@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Text.Json;
 using System.Threading;
 using arduino_client_hand_writer.Serial;
 using MovementManager.Helper;
@@ -38,18 +40,18 @@ namespace MovementManager
             setting = Setting.FromFile("Resources/settings.json");
 
             IClient client = SerialClient.Create(setting.PortName, setting.BaudRate, false);
-            // client = new MockClient();
+            client = new MockClient();
 
             IService service = new ServiceImpl(client);
             service.Connect();
 
             InitComponent( service );
 
-            ResetHardware();
+          //  ResetHardware();
 
             Draw();
 
-            ResetHardware();
+            // ResetHardware();
             
             service.Close();
 
@@ -60,7 +62,6 @@ namespace MovementManager
 
         private static void InitComponent(IService service)
         {
-            
             baseMotorComponent      = new Motor(HardwarePin.MOTOR_A_PIN, service) { EnableStepMove = true, AngleStep = 10 };
             secondaryMotorComponent = new Motor(HardwarePin.MOTOR_B_PIN, service) { EnableStepMove = true, AngleStep = 10 };
             penMotorComponent       = new Motor(HardwarePin.MOTOR_PEN_PIN, service);
@@ -90,18 +91,28 @@ namespace MovementManager
                         movementProperties.Add(prop);
                         Console.WriteLine($"[{ x }, y: { y }] alpha: { prop.Alpha }, beta: { prop.Beta }");
                     }
-                    catch (Exception)
+                    catch (Exception e)
                     {
-                        Console.WriteLine($"point not feasible: {x}, {y}");
+                        Console.WriteLine($"[Point Error] {x}, {y}, error: {e.Message}");
                     }
                 }
                 //  break;
             }
 
+            SaveToFile(movementProperties);
             ExecuteDraw(movementProperties);
 
             ToggleLedFinishOperation();
 
+        }
+
+        private static void SaveToFile(ICollection<MovementProperty> movementProperties)
+        {
+           string json = JsonSerializer.Serialize<ICollection<MovementProperty>>(movementProperties, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    });
+            File.WriteAllText($"Output/path_{DateTime.Now:HHmmss}.json", json);
         }
 
         private static void ExecuteDraw(ICollection<MovementProperty> movementProperties)
@@ -127,12 +138,11 @@ namespace MovementManager
 
         static bool ValidateX(double x)
         {
-            double maxX = (horizontalLength - setting.ArmBaseLength);
             bool result = x >= minX && x <= maxX;
             //   Console.WriteLine($"X = { x } min: { 0 } max: { maxX } -valid = { result }");
             if (!result)
             {
-                throw new ArgumentException($"Invalid X: { x }");
+                throw new ArgumentException($"Invalid X: { x }. Range = {minX} - {maxX}");
             }
 
             return result;
@@ -143,7 +153,7 @@ namespace MovementManager
             //    Console.WriteLine($"Y = { y } min: { B1_LENGTH } max: { verticalLength } -valid = { result }");
             if (!result)
             {
-                throw new ArgumentException($"Invalid Y: { y }");
+                throw new ArgumentException($"Invalid Y: { y }. Range: {minY} - {maxY}");
             }
 
             return result;
@@ -155,7 +165,7 @@ namespace MovementManager
         }
         static double CalculateHorizontalLength()
         {
-            return setting.ArmBaseLength * cos45 + setting.ArmSecondaryLength * cos45;
+            return setting.ArmSecondaryLength;// * cos45 + setting.ArmSecondaryLength * cos45;
         }
 
         ///////////////////////////// Movement Model //////////////////////////////
@@ -167,7 +177,7 @@ namespace MovementManager
             MovementProperty prop = CalculateMovement(x, y);
             if (null == prop)
             {
-                throw new ArgumentException($"Point not feasible: {x}, {y}");
+                throw new ArgumentException($"X,Y valid. but not feasible: {x}, {y}");
             }
 
             return prop;
@@ -176,12 +186,10 @@ namespace MovementManager
         private static void MoveArm(MovementProperty prop)
         {
             Console.WriteLine($"Move motor ({prop.XString}, {prop.YString})");
-            double alpha = prop.Alpha;
-            double tetha = CalculateTetha(alpha, prop.Beta) + setting.ArmSecondaryAngleAdjustment;
-
+            
             // Move arms
-            baseMotorComponent.Move((byte)alpha);
-            secondaryMotorComponent.Move((byte)tetha);
+            baseMotorComponent.Move((byte) prop.Alpha);
+            secondaryMotorComponent.Move((byte) prop.Theta);
         }
 
         private static void TogglePen()
@@ -219,7 +227,7 @@ namespace MovementManager
         static MovementProperty CalculateMovement(double x, double y)
         {
 
-            for (double alpha = 0; alpha < 180; alpha++)
+            for (double alpha = 0; alpha < 90; alpha++)
             {
                 double calX = -1;
                 double calY = -1;
@@ -237,7 +245,8 @@ namespace MovementManager
                             // Console.WriteLine(" FOUND calculating " + calX);
                             // Console.WriteLine( $" Aplha: { alpha } Beta: { beta } ");
                             Console.WriteLine($"<!> [{ x }, { y }] Trial => x: { calX }, y: { calY }");
-                            return new MovementProperty(calX, calY, alpha, beta);
+                            double theta = CalculateTetha(alpha, beta);
+                            return new MovementProperty(calX, calY, alpha, beta, theta);
                         }
                     }
                 }

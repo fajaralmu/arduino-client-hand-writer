@@ -16,9 +16,13 @@ namespace MovementManager
         public double ArmPenDownAngle { get; set; }
         public double Tolerance { get; set; }
         public int DelayBeforeTogglePen { get; set; }
-        public string PortName { get; internal set; }
-        public int BaudRate { get; internal set; } = 9600;
+        public string PortName { get; set; }
+        public int BaudRate { get;  set; } = 9600;
         
+        public string Json()
+        {
+            return JsonSerializer.Serialize<Setting>(this, options);
+        }
         public static Setting FromFile(string path)
         {
             System.Text.StringBuilder sb = new System.Text.StringBuilder();

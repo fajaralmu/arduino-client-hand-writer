@@ -55,7 +55,6 @@ namespace arduino_client_hand_writer.Serial
             }
             else
             {
-                Console.WriteLine("Not Motor");
             }
 
             return 1.ToString();
