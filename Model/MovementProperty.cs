@@ -6,6 +6,7 @@ namespace MovementManager.Model
     {
         public byte Alpha { get; }
         public byte Beta { get; }
+        public byte Omega { get; }
         public byte Theta { get; }
         public double X { get; }
         public double Y { get; }
@@ -18,11 +19,12 @@ namespace MovementManager.Model
             NumberDecimalDigits = 2
         };
 
-        public MovementProperty(double x, double y, double alpha, double beta, double theta)
+        public MovementProperty(double x, double y, double alpha, double beta, double theta, double omega)
         {
             Alpha = (byte)alpha;
             Beta = (byte)beta;
             Theta = (byte)theta;
+            Omega = (byte) omega;
             X = x;
             Y = y;
         }

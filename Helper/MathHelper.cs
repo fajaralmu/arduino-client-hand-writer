@@ -34,5 +34,9 @@ namespace MovementManager.Helper
             return Math.Sin( Rad( angle ) );
         }
 
+        internal static double Tan(double angle )
+        {
+            return Math.Tan( Rad( angle ) );
+        }
     }
 }

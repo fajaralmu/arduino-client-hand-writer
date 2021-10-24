@@ -3,8 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <title>Movement Simulator</title>
+    <script src="Output/data.js"></script>
     <script type="text/javascript">
-      const PX_PER_CM = 37.795280352161;
+      const PX_PER_CM = 10;
       const setting = {
         armBaseLength: 15.5 * PX_PER_CM,
         armSecondaryLength: 16.3 * PX_PER_CM,
@@ -18,12 +19,22 @@
         portName: "COM7",
         baudRate: 9600,
       };
-      
 
       const width = 2 * (setting.armBaseLength + setting.armSecondaryLength);
       const height = setting.armBaseLength + setting.armSecondaryLength;
-      const paths = [{"alpha":51,"beta":44,"theta":83,"x":2.9488349370342637,"y":15.519054254878034,"xString":"2.95","yString":"15.52"},{"alpha":60,"beta":24,"theta":54,"x":3.9822727117869947,"y":15.4570769740378,"xString":"3.98","yString":"15.46"},{"alpha":65,"beta":16,"theta":41,"x":4.943108463327565,"y":15.42595747815307,"xString":"4.94","yString":"15.43"},{"alpha":70,"beta":10,"theta":30,"x":6.0746490133910935,"y":15.43347651051623,"xString":"6.07","yString":"15.43"},{"alpha":74,"beta":6,"theta":21,"x":7.055011507995147,"y":15.42219860338221,"xString":"7.06","yString":"15.42"},{"alpha":78,"beta":3,"theta":15,"x":8.084221118551861,"y":15.422967592588705,"xString":"8.08","yString":"15.42"},{"alpha":85,"beta":0,"theta":4,"x":9.9490859874113,"y":15.441017820422056,"xString":"9.95","yString":"15.44"},{"alpha":89,"beta":0,"theta":0,"x":11.02948770022211,"y":15.497639274924065,"xString":"11.03","yString":"15.50"},{"alpha":62,"beta":35,"theta":63,"x":4.927430555373734,"y":16.553569871068596,"xString":"4.93","yString":"16.55"},{"alpha":68,"beta":24,"theta":46,"x":5.925870513840361,"y":16.405032961164206,"xString":"5.93","yString":"16.41"},{"alpha":73,"beta":19,"theta":36,"x":7.040645698800996,"y":16.450564489712832,"xString":"7.04","yString":"16.45"},{"alpha":77,"beta":16,"theta":28,"x":8.0069501779785,"y":16.480922783256144,"xString":"8.01","yString":"16.48"},{"alpha":81,"beta":13,"theta":21,"x":9.003415467950244,"y":16.43392455094396,"xString":"9.00","yString":"16.43"},{"alpha":85,"beta":12,"theta":16,"x":10.058347983742271,"y":16.480576274510852,"xString":"10.06","yString":"16.48"},{"alpha":64,"beta":44,"theta":70,"x":5.908548223076043,"y":17.404599569932074,"xString":"5.91","yString":"17.40"},{"alpha":70,"beta":35,"theta":55,"x":6.902927557007175,"y":17.43311780393681,"xString":"6.90","yString":"17.43"},{"alpha":75,"beta":30,"theta":45,"x":7.958177781988735,"y":17.47185030748056,"xString":"7.96","yString":"17.47"},{"alpha":79,"beta":28,"theta":38,"x":8.92772260736892,"y":17.562579157368248,"xString":"8.93","yString":"17.56"},{"alpha":83,"beta":26,"theta":33,"x":9.917054945724379,"y":17.576321084385878,"xString":"9.92","yString":"17.58"},{"alpha":87,"beta":24,"theta":27,"x":10.921065390021365,"y":17.512441004074894,"xString":"10.92","yString":"17.51"},{"alpha":76,"beta":44,"theta":58,"x":8.953511616511893,"y":18.51287560957293,"xString":"8.95","yString":"18.51"},{"alpha":81,"beta":39,"theta":47,"x":9.989535984591566,"y":18.455771234473822,"xString":"9.99","yString":"18.46"},{"alpha":85,"beta":37,"theta":41,"x":10.955908437174836,"y":18.450092936182298,"xString":"10.96","yString":"18.45"},{"alpha":89,"beta":36,"theta":36,"x":11.984402728347373,"y":18.436565536386432,"xString":"11.98","yString":"18.44"}];
-      </script>
+      let paths = [{"alpha":41,"beta":42,"omega":34,"theta":91,"x":0.886277379160064,"y":13.514567981147152,"xString":"0.89","yString":"13.51"}];
+      paths = calculatedPaths;
+
+      function Cos(angle) {
+        return Math.cos(rad(angle));
+      }
+      function Sin(angle) {
+        return Math.sin(rad(angle));
+      }
+      function rad(angle) {
+        return (angle * Math.PI) / 180;
+      }
+    </script>
     <style>
       * {
         font-family: Arial, Helvetica, sans-serif;
@@ -36,6 +47,9 @@
         text-align: center;
         height: 100%;
         padding: 50px;
+      }
+      .small {
+        font: italic 20px sans-serif;
       }
     </style>
   </head>
@@ -67,26 +81,8 @@
         // <circle cx="50" cy="50" r="40" stroke="black" stroke-width="3" fill="red" />
         svg.appendChild(createCircle(originX, originY, "red"));
       }
-      function createCircle(x,y,color,r=10)
-      {
-        const circle = createSvgElement("circle");
-        circle.setAttribute("cx", x);
-        circle.setAttribute("cy", y);
-        circle.setAttribute("r", r);
-        circle.setAttribute("fill", color);
-        return circle;
-      }
+    
       let timeout;
-
-      function Cos(angle) {
-        return Math.cos(rad(angle));
-      }
-      function Sin(angle) {
-        return Math.sin(rad(angle));
-      }
-      function rad(angle) {
-        return (angle * Math.PI) / 180;
-      }
 
       function drawPaths() {
         if (timeout) {
@@ -99,42 +95,39 @@
         pathContent.innerHTML = "";
 
         // construct pathData
-        let baseHorLength       = setting.armBaseLength * Cos(path.alpha);
-        let baseVerLength       = setting.armBaseLength * Sin(path.alpha);
-        const baseArmXAdjusted  = originX - baseHorLength;
-        const baseArmYAdjusted  = originY - baseVerLength;
+        let baseHorLength = setting.armBaseLength * Cos(path.alpha);
+        let baseVerLength = setting.armBaseLength * Sin(path.alpha);
+        const baseArmXAdjusted = originX - baseHorLength;
+        const baseArmYAdjusted = originY - baseVerLength;
 
-        let secondaryHorLength      = setting.armSecondaryLength * Cos(path.beta);
-        let secondaryVerLength      = setting.armSecondaryLength * Sin(path.beta);
+        let secondaryHorLength = setting.armSecondaryLength * Cos(path.beta);
+        let secondaryVerLength = setting.armSecondaryLength * Sin(path.beta);
         const secondaryArmXAdjusted = baseArmXAdjusted - secondaryHorLength;
         const secondaryArmYAdjusted = baseArmYAdjusted - secondaryVerLength;
 
         let pathData = `M ${originX} ${originY} 
                         L ${baseArmXAdjusted} ${baseArmYAdjusted} 
                         L ${secondaryArmXAdjusted} ${secondaryArmYAdjusted}`;
-
-        console.log("Aplha: ", path.alpha, "Beta: ", path.beta);
-        console.log(
-          "Base Length ",
-          setting.armBaseLength,
-          " (H V) ",
-          baseHorLength,
-          baseVerLength
-        );
-        console.log(
-          "Secondary Length ",
-          setting.armSecondaryLength,
-          "(H V) ",
-          secondaryHorLength,
-          secondaryVerLength
-        );
+        console.log();
+        console.log("Expected point", path.x  * PX_PER_CM, path.y  * PX_PER_CM);
+        console.log("Actual point", secondaryArmXAdjusted, secondaryArmYAdjusted);
         const pathElement = commonPath(pathData);
         pathContent.appendChild(pathElement);
 
-        // actual
-        pointContent.appendChild(createCircle(path.x * PX_PER_CM, height -  path.y * PX_PER_CM, "red"));
-        // expected
-        pointContent.appendChild(createCircle(secondaryArmXAdjusted, secondaryArmYAdjusted, "green"));
+        // Print angle
+        pathContent.appendChild(createText(originX, originY, path.alpha));
+        pathContent.appendChild(
+          createText(baseArmXAdjusted, baseArmYAdjusted, path.beta)
+        );
+
+        // Exptected
+        pointContent.appendChild(
+          createCircle(path.x * PX_PER_CM, height - path.y * PX_PER_CM, "red")
+        );
+        // Actual
+        pointContent.appendChild(
+          createCircle(secondaryArmXAdjusted, secondaryArmYAdjusted, "green")
+        );
 
         currentPathIndex++;
 
@@ -146,6 +139,26 @@
         timeout = setTimeout(() => {
           drawPaths();
         }, 500);
+      }
+
+      /////////////// Svg Elements ///////////////
+
+      function createCircle(x, y, color, r = 3) {
+        const circle = createSvgElement("circle");
+        circle.setAttribute("cx", x);
+        circle.setAttribute("cy", y);
+        circle.setAttribute("r", r);
+        circle.setAttribute("fill", color);
+        return circle;
+      }
+
+      function createText(x, y, text) {
+        const txt = createSvgElement("text");
+        txt.setAttribute("x", x);
+        txt.setAttribute("y", y);
+        txt.setAttribute("class", "small");
+        txt.innerHTML = text;
+        return txt;
       }
 
       function commonPath(d) {

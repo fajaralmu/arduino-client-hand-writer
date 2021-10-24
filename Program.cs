@@ -100,7 +100,7 @@ namespace MovementManager
             }
 
             SaveToFile(movementProperties);
-            ExecuteDraw(movementProperties);
+      //      ExecuteDraw(movementProperties);
 
             ToggleLedFinishOperation();
 
@@ -113,6 +113,7 @@ namespace MovementManager
                         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                     });
             File.WriteAllText($"Output/path_{DateTime.Now:HHmmss}.json", json);
+            File.WriteAllText($"Output/data.js", "const calculatedPaths = " + json );
         }
 
         private static void ExecuteDraw(ICollection<MovementProperty> movementProperties)
@@ -189,7 +190,8 @@ namespace MovementManager
             
             // Move arms
             baseMotorComponent.Move((byte) prop.Alpha);
-            secondaryMotorComponent.Move((byte) prop.Theta);
+            // secondaryMotorComponent.Move((byte) prop.Theta);
+            secondaryMotorComponent.Move((byte) prop.Omega);
         }
 
         private static void TogglePen()
@@ -229,15 +231,13 @@ namespace MovementManager
 
             for (double alpha = 0; alpha < 90; alpha++)
             {
-                double calX = -1;
-                double calY = -1;
 
                 for (double beta = 0; beta < 45; beta++)
                 {
-                    calX = CalculateX(alpha, beta);
+                    double calX = CalculateX(alpha, beta);
                     if (InRange(calX, x, setting.Tolerance))
                     {
-                        calY = CalculateY(alpha, beta);
+                        double calY = CalculateY(alpha, beta);
                         //   Console.WriteLine($"[{ x }, { y }] Trial => x: { calX }, y: { calY }" );
                         if (InRange(calY, y, setting.Tolerance))
                         {
@@ -246,7 +246,8 @@ namespace MovementManager
                             // Console.WriteLine( $" Aplha: { alpha } Beta: { beta } ");
                             Console.WriteLine($"<!> [{ x }, { y }] Trial => x: { calX }, y: { calY }");
                             double theta = CalculateTetha(alpha, beta);
-                            return new MovementProperty(calX, calY, alpha, beta, theta);
+                            double omega = CalculateOmega(alpha);
+                            return new MovementProperty(calX, calY, alpha, beta, theta, omega);
                         }
                     }
                 }
@@ -260,17 +261,30 @@ namespace MovementManager
         }
         static double CalculateX(double alpha, double beta)
         {
-            return horizontalLength - setting.ArmBaseLength * MathHelper.Cos(alpha) - setting.ArmSecondaryAngleAdjustment * MathHelper.Cos(beta);
+            double baseArmLengthHorizontal      = setting.ArmBaseLength * MathHelper.Cos(alpha);
+            double secondaryArmLengthHorizontal = setting.ArmSecondaryAngleAdjustment * MathHelper.Cos(beta);
+            
+            return horizontalLength - baseArmLengthHorizontal - secondaryArmLengthHorizontal;
         }
         private static double CalculateY(double alpha, double beta)
         {
-            return setting.ArmBaseLength * MathHelper.Sin(alpha) + setting.ArmSecondaryAngleAdjustment * MathHelper.Sin(beta);
+            double baseArmLengthVertical      = setting.ArmBaseLength * MathHelper.Sin(alpha);
+            double secondaryArmLengthVertical =  setting.ArmSecondaryAngleAdjustment * MathHelper.Sin(beta);
+
+            return baseArmLengthVertical + secondaryArmLengthVertical;
         }
 
         private static byte CalculateTetha(double alpha, double beta)
         {
             double lambda = MathHelper.CosAngle(MathHelper.Sin(alpha));
             return (byte)(lambda + beta);//+ 90;
+        }
+        // relative angle from base arm latest position against x axis
+        private static byte CalculateOmega(double alpha)
+        {
+            double p = setting.ArmBaseLength / MathHelper.Tan( alpha );
+            double horArmBaseLength  = setting.ArmBaseLength * MathHelper.Sin( alpha );
+            return (byte) MathHelper.SinAngle( horArmBaseLength / p );
         }
 
         private static void ConfigureLogger()
