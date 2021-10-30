@@ -33,6 +33,8 @@ namespace  MovementManager.Service
             Thread.Sleep( waitDuration );
         }
 
+        public bool Connected => _client.Connected;
+
         public int ReadMotorAngle(HardwarePin pin)
         {
             string response = _client.Send( new CommanReadMotorPayload( pin ));

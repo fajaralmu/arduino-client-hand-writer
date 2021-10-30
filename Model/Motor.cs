@@ -38,15 +38,15 @@ namespace MovementManager.Model
                 _service.MoveMotor(Pin, angle, waitDuration);
             }
 
-            Console.WriteLine("--check servo angle--");
+            // Console.WriteLine("--check servo angle--");
 
-            int latestAngle = _service.ReadMotorAngle(Pin);
+            // int latestAngle = _service.ReadMotorAngle(Pin);
 
-            while (latestAngle != angle)
-            {
-                Console.WriteLine("wait latest angle: " + latestAngle);
-                latestAngle = _service.ReadMotorAngle(Pin);
-            }
+            // while (latestAngle != angle)
+            // {
+            //     Console.WriteLine("wait latest angle: " + latestAngle);
+            //     latestAngle = _service.ReadMotorAngle(Pin);
+            // }
 
             Console.WriteLine($"END MOVE SERVO { Pin } to angle: { angle }, waiting for { waitDuration } ms");
 

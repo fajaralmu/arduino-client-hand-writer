@@ -4,7 +4,9 @@ namespace arduino_client_hand_writer.Serial
 {
     public interface IClient
     {
-         public void Connect();
+        bool Connected { get; }
+
+        public void Connect();
          public void Close();
          public string Send( CommandPayload cmd, int waitDuration = 0 );
     }

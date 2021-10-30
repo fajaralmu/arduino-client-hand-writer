@@ -56,8 +56,12 @@
         padding: 50px;
       }
       .small {
-        font: italic 5px sans-serif;
+        font: italic 30px sans-serif;
       }
+      .actual-circle:hover{
+        cursor: pointer;
+      }
+      
     </style>
   </head>
   <body>
@@ -71,6 +75,7 @@
     </div>
     <script type="text/javascript">
       const maxHor = setting.armBaseLength + setting.armSecondaryLength;
+      const fullLength = maxHor * 2;
       const svg = document.getElementById("canvas");
       const pathContent = document.getElementById("path-content");
       const pointContent = document.getElementById("point-content");
@@ -113,37 +118,52 @@
         let secondaryVLength = setting.armSecondaryLength * Sin(path.beta);
         const secondaryArmXAdjusted = baseArmXAdjusted - secondaryHLength;
         const secondaryArmYAdjusted = baseArmYAdjusted - secondaryVLength;
+        
 
-        let pathData = `M ${originX} ${originY} 
-                        L ${baseArmXAdjusted} ${baseArmYAdjusted} 
-                        L ${secondaryArmXAdjusted} ${secondaryArmYAdjusted}`;
+        let pathData                      = `M ${originX} ${originY} 
+                                             L ${baseArmXAdjusted} ${baseArmYAdjusted} 
+                                             L ${secondaryArmXAdjusted} ${secondaryArmYAdjusted}`;
+        let helperHorizontalLinePath      = `M ${0} ${baseArmYAdjusted}
+                                             L ${fullLength} ${baseArmYAdjusted}`;
+
+        const horizontalPath = setting.armBaseLength/ Cos(path.alpha);
+
+        let helperPerpendicularLinePath   = `M ${baseArmXAdjusted} ${baseArmYAdjusted}
+                                             L ${originX - horizontalPath} ${originY}`;
         console.log();
         const calX = CalculateX(path.alpha, path.beta);
         const calY = CalculateY(path.alpha, path.beta);
-        
 
-        console.log("Expected point", path.x  * PX_PER_CM, path.y  * PX_PER_CM);
-        console.log("CALCULATED point", calX, calY);
-        console.log("Actual point", secondaryArmXAdjusted, secondaryArmYAdjusted);
+        console.log("Expected point", dec(path.x), dec(path.y));
+        console.log("CALCULATED point", dec(calX), dec(calY));
+        console.log("Actual point", dec(secondaryArmXAdjusted), dec(secondaryArmYAdjusted));
+
         const pathElement = commonPath(pathData);
-       
+        const pathHelperHorizontalElement = commonPath(helperHorizontalLinePath, 0.3, "rgb(100,200,0)");
+        const pathHelperPerpendicularElement = commonPath(helperPerpendicularLinePath, 0.3, "rgb(200,200,0)");
 
         // Print angle
-        pathContent.appendChild(createText(originX, originY, path.alpha));
+        pathContent.appendChild(createText(originX, originY, "a: "+ path.alpha));
         pathContent.appendChild(
-          createText(baseArmXAdjusted, baseArmYAdjusted, path.beta)
+          createText(baseArmXAdjusted, baseArmYAdjusted, "a: "+ path.beta+", o:"+ path.omega +" => "+ ( path.beta + path.omega ))
         );
+
+        /////////////////// Draw Points ///////////////////
 
         // Exptected
         pointContent.appendChild(
-          createCircle(path.x * PX_PER_CM, height - path.y * PX_PER_CM, "red", 0.7)
+          createCircle(path.x * PX_PER_CM, height - path.y * PX_PER_CM, "red", 3.5)
         );
         // Actual
         pointContent.appendChild(
-          createCircle(secondaryArmXAdjusted, secondaryArmYAdjusted, "yellow")
+          actualPointCircle(secondaryArmXAdjusted, secondaryArmYAdjusted, path)
         );
 
+        ////////////////// Append Lines /////////////////////////
+
         pathContent.appendChild(pathElement);
+        pathContent.appendChild(pathHelperHorizontalElement);
+        pathContent.appendChild(pathHelperPerpendicularElement);
 
         currentPathIndex++;
 
@@ -158,6 +178,11 @@
       }
 
       /////
+
+      function dec(val)
+      {
+        return parseInt(new String(val)).toFixed(2);
+      }
 
       function CalculateY(alpha, beta)
         {
@@ -176,7 +201,18 @@
         }
       /////////////// Svg Elements ///////////////
 
-      function createCircle(x, y, color, r = 0.4) {
+      function actualPointCircle(x, y, path)
+      {
+        const circle = createCircle(x, y, "yellow");
+        circle.setAttribute("class", "actual-circle");
+        circle.onclick = function(e) {
+          console.info("x: ", dec(x), ", y: ", dec(y));
+          console.info("alpha: ",path.alpha, ", beta: ", path.beta, "omega: "+ path.omega);
+        }
+        return circle;
+      }
+
+      function createCircle(x, y, color, r = 2) {
         const circle = createSvgElement("circle");
         circle.setAttribute("cx", x);
         circle.setAttribute("cy", y);
@@ -194,10 +230,10 @@
         return txt;
       }
 
-      function commonPath(d, stroke = 0.7) {
+      function commonPath(d, stroke = 0.7, stokeColor = "#000") {
         const path = createSvgElement("path");
         path.setAttribute("d", d);
-        path.setAttribute("stroke", "#000");
+        path.setAttribute("stroke", stokeColor);
         path.setAttribute("stroke-width", stroke);
         path.setAttribute("fill", "none");
         return path;

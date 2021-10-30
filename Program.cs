@@ -25,41 +25,42 @@ namespace MovementManager
         static double minX = 0;
         static double minY;
         static double cos45 = MathHelper.Cos(45);
+        static double sin45 = MathHelper.Sin(45);
 
         static double verticalLength, horizontalLength;
 
         static Motor baseMotorComponent, secondaryMotorComponent, penMotorComponent;
         static Led ledComponent;
-
-
+        const string settingFile = "Resources/settings.json";
         static Setting setting;
 
         static void Main(string[] args)
         {
             ConfigureLogger();
 
-            setting = Setting.FromFile("Resources/settings.json");
+            setting = Setting.FromFile(settingFile);
 
             IClient client = SerialClient.Create(setting.PortName, setting.BaudRate, false);
-            //client = new MockClient();
+            client = new MockClient();
 
             IService service = new ServiceImpl(client);
             service.Connect();
 
             InitComponent(service);
-            while(true){
-                ToggleLed(true);
-            baseMotorComponent.Move( 0 );
             
-            ToggleLed(false);
-            baseMotorComponent.Move( 90 );
-            }
             Task.Run(() =>
             {
-                //ResetHardware();
-                if ( true ) return;
+                // baseMotorComponent.Move( 0 );
+                // TogglePen();
+                // TogglePen();
+                // TogglePen();
+                //  if ( true ) return;
+                // ResetHardware();
+                
+                //  if ( true ) return;
+               
                 Draw();
-                ResetHardware();
+                // ResetHardware();
                 service.Close();
 
                  Console.WriteLine(" ======== END ========= ");
@@ -67,6 +68,11 @@ namespace MovementManager
 
            
             Console.ReadLine();
+
+            if (service.Connected)
+            {
+                service.Close();
+            }
 
         }
 
@@ -83,9 +89,10 @@ namespace MovementManager
             verticalLength = CalculateVerticalLength();
             horizontalLength = CalculateHorizontalLength();
 
-            maxX = horizontalLength;
-            maxY = verticalLength;
+            maxX = horizontalLength - setting.ArmSecondaryLength;
+            maxY = (setting.ArmBaseLength * sin45 + setting.ArmBaseLength * sin45);;
 
+            minX = horizontalLength - (setting.ArmBaseLength * cos45 + setting.ArmBaseLength * cos45);
             minY = setting.ArmBaseLength;
 
             Console.WriteLine($"MAX Horizontal Length: { maxX }, MAX Vertical Length: { maxY } ");
@@ -213,10 +220,20 @@ namespace MovementManager
             ToggleLed(true);
 
             // move down pen
-            penMotorComponent.Move((byte)setting.ArmPenDownAngle, 1000);
-            penMotorComponent.Move(0, 500);
+            PenDown();
+            PenUp();
 
             ToggleLed(false);
+        }
+
+        private static void PenUp()
+        {
+            penMotorComponent.Move(0, 500);
+        }
+
+        private static void PenDown()
+        {
+            penMotorComponent.Move((byte)setting.ArmPenDownAngle, 1000);
         }
 
         private static void ToggleLed(bool on, int waitDuration = 0)
@@ -289,9 +306,9 @@ namespace MovementManager
         // relative angle from base arm latest position against x axis
         private static byte CalculateOmega(double alpha)
         {
-            double p = setting.ArmBaseLength / MathHelper.Tan(alpha);
-            double horArmBaseLength = setting.ArmBaseLength * MathHelper.Sin(alpha);
-            return (byte)MathHelper.SinAngle(horArmBaseLength / p);
+            double baseArmPependicular = setting.ArmBaseLength * MathHelper.Tan(alpha);
+            double baseArmLengthVertical = setting.ArmBaseLength * MathHelper.Sin(alpha);
+            return (byte)MathHelper.SinAngle(baseArmLengthVertical / baseArmPependicular);
         }
 
         private static void ConfigureLogger()

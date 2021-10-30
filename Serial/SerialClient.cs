@@ -43,6 +43,9 @@ namespace serial_communication_client.Serial
             _baudRate = baudRate;
             _showRawData = showRawData;
         }
+
+        public bool Connected => _serialPort != null && _serialPort.IsOpen;
+        
         public static SerialClient Create(string portName, int baudRate, bool showRawData = false )
         {
             return new SerialClient(portName, baudRate, showRawData);

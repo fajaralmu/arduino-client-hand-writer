@@ -59,5 +59,7 @@ namespace arduino_client_hand_writer.Serial
 
             return 1.ToString();
         }
+
+        public bool Connected => true;
     }
 }

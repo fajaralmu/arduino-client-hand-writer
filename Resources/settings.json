@@ -1,12 +1,12 @@
 {
-    "armBaseLength": 15.5,
-    "armSecondaryLength": 16.3,
+    "armBaseLength": 155,
+    "armSecondaryLength": 163,
     
     "armSecondaryAngleAdjustment": 5,
     "armPenDownAngle": 30,
     
     "delayBeforeTogglePen": 500,
-    "tolerance": 0.2,
+    "tolerance": 0.1,
     
     "portName": "COM7",
     "baudRate": 9600
