@@ -18,6 +18,7 @@ namespace MovementManager
         public int DelayBeforeTogglePen { get; set; }
         public string PortName { get; set; }
         public int BaudRate { get;  set; } = 9600;
+        public bool SimulationMode{get;set;} = true;
         
         public string Json()
         {

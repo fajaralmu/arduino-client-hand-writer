@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 
 namespace MovementManager.Model
@@ -27,6 +28,11 @@ namespace MovementManager.Model
             Omega = (byte) omega;
             X = x;
             Y = y;
+        }
+
+        internal bool AngleEquals(MovementProperty prop)
+        {
+            return Alpha == prop.Alpha && Beta == prop.Beta;
         }
     }
 }

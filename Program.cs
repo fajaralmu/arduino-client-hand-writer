@@ -2,12 +2,15 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using arduino_client_hand_writer.Serial;
 using MovementManager.Helper;
+using MovementManager.InputProcess;
 using MovementManager.Model;
 using MovementManager.Service;
 using serial_communication_client;
@@ -33,6 +36,7 @@ namespace MovementManager
         static Led ledComponent;
         const string settingFile = "Resources/settings.json";
         static Setting setting;
+        static int[][] imageCode;
 
         static void Main(string[] args)
         {
@@ -40,9 +44,15 @@ namespace MovementManager
 
             setting = Setting.FromFile(settingFile);
 
-            IClient client = SerialClient.Create(setting.PortName, setting.BaudRate, false);
-            client = new MockClient();
+            ConfigureBounds();
 
+            int w = (int)(maxX - minX);
+            int h = (int)(maxY - minY);
+            Console.WriteLine($"W: {w}, H: {h}");
+            Bitmap image = ImageLoader.LoadImage("Input/SampleFont.bmp", w, h );
+            imageCode = ImageLoader.GetBlackAndWhiteImageCode(image);
+
+            IClient client = setting.SimulationMode ? new MockClient(): SerialClient.Create(setting.PortName, setting.BaudRate, false);
             IService service = new ServiceImpl(client);
             service.Connect();
 
@@ -50,20 +60,18 @@ namespace MovementManager
             
             Task.Run(() =>
             {
-                // baseMotorComponent.Move( 0 );
-                // TogglePen();
-                // TogglePen();
-                // TogglePen();
-                //  if ( true ) return;
-                // ResetHardware();
-                
-                //  if ( true ) return;
                
-                Draw();
-                // ResetHardware();
+                if (setting.SimulationMode == false)
+                    ResetHardware();
+
+                DrawFromImageCode( imageCode );
+
+                if (setting.SimulationMode == false)
+                    ResetHardware();
+                
                 service.Close();
 
-                 Console.WriteLine(" ======== END ========= ");
+                Console.WriteLine(" ======== END ========= ");
             });
 
            
@@ -73,6 +81,21 @@ namespace MovementManager
             {
                 service.Close();
             }
+
+        }
+
+        private static void ConfigureBounds()
+        {
+            verticalLength      = setting.ArmBaseLength + setting.ArmSecondaryLength;
+            horizontalLength    = setting.ArmBaseLength + setting.ArmSecondaryLength;
+
+            // maximum value
+            maxX = horizontalLength - setting.ArmSecondaryLength;
+            maxY = (setting.ArmBaseLength * sin45 + setting.ArmBaseLength * sin45);
+
+            // minimum value
+            minX = horizontalLength - (setting.ArmBaseLength * cos45 + setting.ArmBaseLength * cos45);
+            minY = setting.ArmBaseLength;
 
         }
 
@@ -86,15 +109,7 @@ namespace MovementManager
 
         private static void Draw()
         {
-            verticalLength = CalculateVerticalLength();
-            horizontalLength = CalculateHorizontalLength();
-
-            maxX = horizontalLength - setting.ArmSecondaryLength;
-            maxY = (setting.ArmBaseLength * sin45 + setting.ArmBaseLength * sin45);;
-
-            minX = horizontalLength - (setting.ArmBaseLength * cos45 + setting.ArmBaseLength * cos45);
-            minY = setting.ArmBaseLength;
-
+           
             Console.WriteLine($"MAX Horizontal Length: { maxX }, MAX Vertical Length: { maxY } ");
 
             ICollection<MovementProperty> movementProperties = new LinkedList<MovementProperty>();
@@ -105,7 +120,7 @@ namespace MovementManager
                     try
                     {
                         MovementProperty prop = GetMovementProperty(x, y);
-                        movementProperties.Add(prop);
+                        AddIfNotExist(movementProperties, prop);
 
                         Console.WriteLine($"[x: { x }, y: { y }] alpha: { prop.Alpha }, beta: { prop.Beta }");
                         Console.WriteLine($"[x: { (byte)prop.X }, y: { (byte)prop.Y }]");
@@ -123,6 +138,52 @@ namespace MovementManager
 
             ToggleLedFinishOperation();
 
+        }
+        private static void DrawFromImageCode(int[][] imageCode)
+        {
+           
+            Console.WriteLine($"MAX Horizontal Length: { maxX }, MAX Vertical Length: { maxY } ");
+
+            ICollection<MovementProperty> movementProperties = new LinkedList<MovementProperty>();
+            for (int x = 0; x < imageCode.Length; x++)
+            {
+                for (int y = 0; y < imageCode[x].Length; y++)
+                {
+                    // Console.WriteLine($"imageCode[x][y] : { imageCode[x][y]  }");
+                    if (imageCode[x][y] != 1) continue;
+                    try
+                    {
+                        MovementProperty prop = GetMovementProperty(x + minX, maxY - ( y ));
+                        AddIfNotExist(movementProperties, prop);
+
+                        Console.WriteLine($"[x: { x }, y: { y }] alpha: { prop.Alpha }, beta: { prop.Beta }");
+                        Console.WriteLine($"[x: { (byte)prop.X }, y: { (byte)prop.Y }]");
+                    }
+                    catch (Exception e)
+                    {
+                        //   Console.WriteLine($"[Point Error] {x}, {y}, error: {e.Message}");
+                    }
+                }
+                //  break;
+            }
+
+            SaveToFile(movementProperties);
+            ExecuteDraw(movementProperties);
+
+            ToggleLedFinishOperation();
+
+        }
+
+        private static void AddIfNotExist(ICollection<MovementProperty> movementProperties, MovementProperty prop)
+        {
+            foreach (MovementProperty propItem in movementProperties)
+            {
+                if (propItem.AngleEquals(prop))
+                {
+                    return;
+                }
+            }
+             movementProperties.Add(prop);
         }
 
         private static void SaveToFile(ICollection<MovementProperty> movementProperties)
@@ -179,15 +240,6 @@ namespace MovementManager
             }
 
             return result;
-        }
-
-        static double CalculateVerticalLength()
-        {
-            return setting.ArmBaseLength + setting.ArmSecondaryLength;
-        }
-        static double CalculateHorizontalLength()
-        {
-            return setting.ArmBaseLength + setting.ArmSecondaryLength;
         }
 
         ///////////////////////////// Movement Model //////////////////////////////

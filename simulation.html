@@ -41,6 +41,7 @@
       function rad(angle) {
         return (angle * Math.PI) / 180;
       }
+      const CIRCLE_R_MULTIPLIER = 2;
     </script>
     <style>
       * {
@@ -72,6 +73,7 @@
         
         <g id="path-content"></g>
       </svg>
+      <p id="progress"></p>
     </div>
     <script type="text/javascript">
       const maxHor = setting.armBaseLength + setting.armSecondaryLength;
@@ -139,8 +141,8 @@
         console.log("Actual point", dec(secondaryArmXAdjusted), dec(secondaryArmYAdjusted));
 
         const pathElement = commonPath(pathData);
-        const pathHelperHorizontalElement = commonPath(helperHorizontalLinePath, 0.3, "rgb(100,200,0)");
-        const pathHelperPerpendicularElement = commonPath(helperPerpendicularLinePath, 0.3, "rgb(200,200,0)");
+        const pathHelperHorizontalElement = commonPath(helperHorizontalLinePath, 0.3, "rgb(200,10,0)");
+        const pathHelperPerpendicularElement = commonPath(helperPerpendicularLinePath, 0.3, "rgb(20,20,220)");
 
         // Print angle
         pathContent.appendChild(createText(originX, originY, "a: "+ path.alpha));
@@ -152,7 +154,7 @@
 
         // Exptected
         pointContent.appendChild(
-          createCircle(path.x * PX_PER_CM, height - path.y * PX_PER_CM, "red", 3.5)
+          createCircle(path.x * PX_PER_CM, height - path.y * PX_PER_CM, "red", 0.7 * CIRCLE_R_MULTIPLIER)
         );
         // Actual
         pointContent.appendChild(
@@ -167,14 +169,18 @@
 
         currentPathIndex++;
 
+        document.getElementById("progress").innerHTML = currentPathIndex+ "/"+paths.length;
+
         if (currentPathIndex == paths.length) {
           currentPathIndex = 0;
           return;
         }
 
+
+
         timeout = setTimeout(() => {
           drawPaths();
-        }, 500);
+        }, 5);
       }
 
       /////
@@ -212,7 +218,7 @@
         return circle;
       }
 
-      function createCircle(x, y, color, r = 2) {
+      function createCircle(x, y, color, r = 0.4 * CIRCLE_R_MULTIPLIER) {
         const circle = createSvgElement("circle");
         circle.setAttribute("cx", x);
         circle.setAttribute("cy", y);
@@ -234,7 +240,7 @@
         const path = createSvgElement("path");
         path.setAttribute("d", d);
         path.setAttribute("stroke", stokeColor);
-        path.setAttribute("stroke-width", stroke);
+        path.setAttribute("stroke-width", stroke * CIRCLE_R_MULTIPLIER);
         path.setAttribute("fill", "none");
         return path;
       }
