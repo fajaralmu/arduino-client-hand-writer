@@ -57,13 +57,22 @@ namespace MovementManager
             service.Connect();
 
             InitComponent(service);
-            
+
             Task.Run(() =>
             {
-               
+             
+            //   ResetHardware();
+            //     while(true){}
+            //     {
+            //         //    penMotorComponent.Move(10);
+            //         // ToggleLed(true, 500);
+            //         // ToggleLed(false, 500);
+            //       //TogglePen();
+            //     }
+                
                 if (setting.SimulationMode == false)
                     ResetHardware();
-
+               // return;
                 DrawFromImageCode( imageCode );
 
                 if (setting.SimulationMode == false)
@@ -264,7 +273,8 @@ namespace MovementManager
             // Move arms
             baseMotorComponent.Move((byte)prop.Alpha);
             // secondaryMotorComponent.Move((byte) prop.Theta);
-            secondaryMotorComponent.Move((byte)(prop.Beta + prop.Omega));
+            int secondaryArmMoveAngle = setting.ArmSecondaryAngleAdjustment + prop.Beta + prop.Omega;
+            secondaryMotorComponent.Move((byte) secondaryArmMoveAngle);
         }
 
         private static void TogglePen()
@@ -280,7 +290,7 @@ namespace MovementManager
 
         private static void PenUp()
         {
-            penMotorComponent.Move(0, 500);
+            penMotorComponent.Move(10, 500);
         }
 
         private static void PenDown()
@@ -300,10 +310,9 @@ namespace MovementManager
 
             // Reset ARM
             baseMotorComponent.Move(0, 1000);
-            secondaryMotorComponent.Move(0, 1000);
-
+            secondaryMotorComponent.Move(setting.ArmSecondaryAngleAdjustment, 1000);
             // Reset PEN 
-            penMotorComponent.Move(0, 1000);
+            PenUp();
 
             ToggleLed(false, 1000);
             Console.WriteLine(" ======= End Reset Hardware ======= ");

@@ -12,7 +12,7 @@ namespace MovementManager
 
         public double ArmBaseLength { get; set; }
         public double ArmSecondaryLength { get; set; }
-        public double ArmSecondaryAngleAdjustment { get; set; }
+        public byte ArmSecondaryAngleAdjustment { get; set; }
         public double ArmPenDownAngle { get; set; }
         public double Tolerance { get; set; }
         public int DelayBeforeTogglePen { get; set; }

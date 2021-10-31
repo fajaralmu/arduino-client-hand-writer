@@ -4,8 +4,8 @@
     "_armSecondaryLength": 16.3,
     "armSecondaryLength": 326,
     
-    "armSecondaryAngleAdjustment": 5,
-    "armPenDownAngle": 30,
+    "armSecondaryAngleAdjustment": 9,
+    "armPenDownAngle": 40,
     
     "delayBeforeTogglePen": 300,
     "tolerance": 1,
