@@ -5,10 +5,9 @@
     <title>Movement Simulator</title>
     <script src="Output/data.js"></script>
     <script type="text/javascript">
-      const PX_PER_CM = 1;
       let setting = {
-        armBaseLength: 15.5 * PX_PER_CM,
-        armSecondaryLength: 16.3 * PX_PER_CM,
+        armBaseLength: 15.5 ,
+        armSecondaryLength: 16.3 ,
 
         armSecondaryAngleAdjustment: 5,
         armPenDownAngle: 30,
@@ -21,8 +20,7 @@
       };
 
       setting = appSettings;
-      setting.armBaseLength *= PX_PER_CM;
-      setting.armSecondaryLength *= PX_PER_CM;
+      // setting.armSecondaryLength *= 1.5;
 
       const width = 2 * (setting.armBaseLength + setting.armSecondaryLength);
       const height = setting.armBaseLength + setting.armSecondaryLength;
@@ -31,16 +29,11 @@
       // Get data from included js
       paths = calculatedPaths;
      
-
-      function Cos(angle) {
-        return Math.cos(rad(angle));
-      }
-      function Sin(angle) {
-        return Math.sin(rad(angle));
-      }
-      function rad(angle) {
-        return (angle * Math.PI) / 180;
-      }
+      const dec = (val) => parseInt(new String(val)).toFixed(2);
+      const Cos = (angle) => Math.cos(rad(angle));
+      const Sin = (angle) => Math.sin(rad(angle));
+      const rad = (angle) =>(angle * Math.PI) / 180;
+      
       const CIRCLE_R_MULTIPLIER = 2;
     </script>
     <style>
@@ -48,7 +41,7 @@
         font-family: Arial, Helvetica, sans-serif;
       }
       #canvas {
-        background-color: cadetblue;
+        background-color: gray;
         margin: auto;
       }
       #container {
@@ -68,6 +61,7 @@
   <body>
     <div id="container">
       <h2>Simulation</h2>
+      <h5>Don't forget to restart Arduino</h5>
       <svg id="canvas">
         <g id="point-content"></g>
         
@@ -85,6 +79,8 @@
       let originX = width / 2;
       let originY = height;
 
+      let timeout;
+
       function init() {
         svg.setAttribute("width", width);
         svg.setAttribute("height", height);
@@ -93,17 +89,13 @@
         drawPaths();
       }
 
-      function drawOriginPoint() {
-        // <circle cx="50" cy="50" r="40" stroke="black" stroke-width="3" fill="red" />
-        svg.appendChild(createCircle(originX, originY, "red"));
-      }
+      function drawOriginPoint() {  svg.appendChild(createCircle(originX, originY, "red")); }
     
-      let timeout;
 
       function drawPaths() {
-        if (timeout) {
-          clearTimeout(timeout);
-        }
+
+        if (timeout) {  clearTimeout(timeout); }
+        
         const path = paths[currentPathIndex];
 
         //  console.log("Draw path", timeout, " Coordinate: ",  path.xString, path.yString);
@@ -147,14 +139,14 @@
         // Print angle
         pathContent.appendChild(createText(originX, originY, "a: "+ path.alpha));
         pathContent.appendChild(
-          createText(baseArmXAdjusted, baseArmYAdjusted, "a: "+ path.beta+", o:"+ path.omega +" => "+ ( path.beta + path.omega ))
+          createText(baseArmXAdjusted, baseArmYAdjusted, "b: "+ path.beta+", o:"+ path.omega +" => "+ ( path.beta + path.omega ))
         );
 
         /////////////////// Draw Points ///////////////////
 
         // Exptected
         pointContent.appendChild(
-          createCircle(path.x * PX_PER_CM, height - path.y * PX_PER_CM, "red", 0.7 * CIRCLE_R_MULTIPLIER)
+          createCircle(path.x , height - path.y , "red", 0.7 * CIRCLE_R_MULTIPLIER)
         );
         // Actual
         pointContent.appendChild(
@@ -176,19 +168,10 @@
           return;
         }
 
-
-
-        timeout = setTimeout(() => {
-          drawPaths();
-        }, 5);
+        timeout = setTimeout(drawPaths, 100);
       }
 
       /////
-
-      function dec(val)
-      {
-        return parseInt(new String(val)).toFixed(2);
-      }
 
       function CalculateY(alpha, beta)
         {
@@ -245,9 +228,7 @@
         return path;
       }
 
-      function createSvgElement(tag) {
-        return document.createElementNS("http://www.w3.org/2000/svg", tag);
-      }
+      const createSvgElement = (tag) => document.createElementNS("http://www.w3.org/2000/svg", tag);
 
       init();
     </script>

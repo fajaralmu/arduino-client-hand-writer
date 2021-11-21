@@ -1,16 +1,21 @@
 {
-    "_armBaseLength": 15.5,
-    "armBaseLength": 310,
-    "_armSecondaryLength": 16.3,
-    "armSecondaryLength": 326,
+    "_armBaseLength": "16 cm",
+    "armBaseLength": 320,
     
+    "_armSecondaryLength": "17 cm",
+    "armSecondaryLength": 300,
     "armSecondaryAngleAdjustment": 9,
+
     "armPenDownAngle": 40,
+    "armPenDownWaitDuration": 1000,
+    "armPenUpAngle": 10,
+    "armPenUpWaitDuration": 500,
     
     "delayBeforeTogglePen": 300,
     "tolerance": 1,
     
     "portName": "COM7",
     "baudRate": 9600,
-    "simulationMode": false
+    "simulationMode": true,
+    "resetHardwareMode": false
 }

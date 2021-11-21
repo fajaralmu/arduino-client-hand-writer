@@ -27,7 +27,7 @@ namespace MovementManager.Model
         {
             _lastAngle = _service.ReadMotorAngle(Pin);
         }
-        public void Move(byte angle, int waitDuration = 0)
+        public virtual void Move(byte angle, int waitDuration = 0)
         {
             if (EnableStepMove && Math.Abs(_lastAngle - angle) > AngleStep)
             {

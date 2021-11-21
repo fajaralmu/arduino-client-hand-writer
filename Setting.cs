@@ -13,12 +13,16 @@ namespace MovementManager
         public double ArmBaseLength { get; set; }
         public double ArmSecondaryLength { get; set; }
         public byte ArmSecondaryAngleAdjustment { get; set; }
-        public double ArmPenDownAngle { get; set; }
+        public byte ArmPenDownAngle { get; set; }
+        public int ArmPenDownWaitDuration { get; set; }
+        public byte ArmPenUpAngle { get; set; }
+        public int ArmPenUpWaitDuration { get; set; }
         public double Tolerance { get; set; }
         public int DelayBeforeTogglePen { get; set; }
         public string PortName { get; set; }
         public int BaudRate { get;  set; } = 9600;
         public bool SimulationMode{get;set;} = true;
+        public bool ResetHardwareMode{get;set;} = false;
         
         public string Json()
         {
@@ -37,9 +41,6 @@ namespace MovementManager
             return FromJson(sb.ToString());
 
         }
-        public static Setting FromJson(string json)
-        {
-            return (Setting)JsonSerializer.Deserialize<Setting>(json, options);
-        }
+        public static Setting FromJson(string json) => (Setting)JsonSerializer.Deserialize<Setting>(json, options);
     }
 }

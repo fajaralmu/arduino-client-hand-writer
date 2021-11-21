@@ -32,11 +32,16 @@ namespace MovementManager
 
         static double verticalLength, horizontalLength;
 
-        static Motor baseMotorComponent, secondaryMotorComponent, penMotorComponent;
+        static Motor baseMotorComponent, secondaryMotorComponent;
+        static PenMotor penMotorComponent;
         static Led ledComponent;
         const string settingFile = "Resources/settings.json";
         static Setting setting;
         static int[][] imageCode;
+
+        static bool running = true;
+
+        static INotificationService notificationService = new NotificationService( "MovementNotif", 2000000 );
 
         static void Main(string[] args)
         {
@@ -49,43 +54,55 @@ namespace MovementManager
             int w = (int)(maxX - minX);
             int h = (int)(maxY - minY);
             Console.WriteLine($"W: {w}, H: {h}");
-            Bitmap image = ImageLoader.LoadImage("Input/SampleFont.bmp", w, h );
+            Bitmap image = ImageLoader.LoadImage("Input/SampleFont.bmp", w, h);
             imageCode = ImageLoader.GetBlackAndWhiteImageCode(image);
 
-            IClient client = setting.SimulationMode ? new MockClient(): SerialClient.Create(setting.PortName, setting.BaudRate, false);
+            IClient client = setting.SimulationMode ? new MockClient() : SerialClient.Create(setting.PortName, setting.BaudRate, false);
             IService service = new ServiceImpl(client);
             service.Connect();
 
             InitComponent(service);
+            
 
-            Task.Run(() =>
-            {
-             
-            //   ResetHardware();
-            //     while(true){}
-            //     {
-            //         //    penMotorComponent.Move(10);
-            //         // ToggleLed(true, 500);
-            //         // ToggleLed(false, 500);
-            //       //TogglePen();
-            //     }
-                
+            // Task.Run(() =>
+            // {
                 if (setting.SimulationMode == false)
+                {
                     ResetHardware();
-               // return;
-                DrawFromImageCode( imageCode );
+                    if (setting.ResetHardwareMode == true)
+                    {
+                        return;
+                    }
+                }
+                // return;
+                DrawFromImageCode(imageCode);
 
                 if (setting.SimulationMode == false)
                     ResetHardware();
-                
+
                 service.Close();
 
                 Console.WriteLine(" ======== END ========= ");
-            });
 
-           
-            Console.ReadLine();
+                if (setting.SimulationMode)
+                {
+                    running = false;
+                }
+            // });
 
+
+            while (running)
+            {
+                Console.WriteLine("#info: Press Q to exit");
+                string key = Console.ReadLine();
+                if ("q".Equals(key))
+                {
+                    break;
+                }
+            }
+
+            Console.WriteLine(" =========== stopping application ============ ");
+            
             if (service.Connected)
             {
                 service.Close();
@@ -95,8 +112,8 @@ namespace MovementManager
 
         private static void ConfigureBounds()
         {
-            verticalLength      = setting.ArmBaseLength + setting.ArmSecondaryLength;
-            horizontalLength    = setting.ArmBaseLength + setting.ArmSecondaryLength;
+            verticalLength = setting.ArmBaseLength + setting.ArmSecondaryLength;
+            horizontalLength = setting.ArmBaseLength + setting.ArmSecondaryLength;
 
             // maximum value
             maxX = horizontalLength - setting.ArmSecondaryLength;
@@ -112,13 +129,18 @@ namespace MovementManager
         {
             baseMotorComponent = new Motor(HardwarePin.MOTOR_A_PIN, service) { EnableStepMove = true, AngleStep = 10 };
             secondaryMotorComponent = new Motor(HardwarePin.MOTOR_B_PIN, service) { EnableStepMove = true, AngleStep = 10 };
-            penMotorComponent = new Motor(HardwarePin.MOTOR_PEN_PIN, service);
             ledComponent = new Led(HardwarePin.DEFAULT_LED, service);
+
+            penMotorComponent = new PenMotor(HardwarePin.MOTOR_PEN_PIN, service, setting.ArmPenDownAngle, setting.ArmPenUpAngle)
+            {
+                PenDownWaitDuration = setting.ArmPenDownWaitDuration,
+                PenUpWaitDuration = setting.ArmPenUpWaitDuration
+            };
         }
 
-        private static void Draw()
+        private static void DrawFullArea()
         {
-           
+
             Console.WriteLine($"MAX Horizontal Length: { maxX }, MAX Vertical Length: { maxY } ");
 
             ICollection<MovementProperty> movementProperties = new LinkedList<MovementProperty>();
@@ -150,7 +172,7 @@ namespace MovementManager
         }
         private static void DrawFromImageCode(int[][] imageCode)
         {
-           
+
             Console.WriteLine($"MAX Horizontal Length: { maxX }, MAX Vertical Length: { maxY } ");
 
             ICollection<MovementProperty> movementProperties = new LinkedList<MovementProperty>();
@@ -162,7 +184,7 @@ namespace MovementManager
                     if (imageCode[x][y] != 1) continue;
                     try
                     {
-                        MovementProperty prop = GetMovementProperty(x + minX, maxY - ( y ));
+                        MovementProperty prop = GetMovementProperty(x + minX, maxY - (y));
                         AddIfNotExist(movementProperties, prop);
 
                         Console.WriteLine($"[x: { x }, y: { y }] alpha: { prop.Alpha }, beta: { prop.Beta }");
@@ -192,7 +214,7 @@ namespace MovementManager
                     return;
                 }
             }
-             movementProperties.Add(prop);
+            movementProperties.Add(prop);
         }
 
         private static void SaveToFile(ICollection<MovementProperty> movementProperties)
@@ -209,8 +231,20 @@ namespace MovementManager
 
         private static void ExecuteDraw(ICollection<MovementProperty> movementProperties)
         {
+            
+            int step = 0;
+            int totalStep = movementProperties.Count;
             foreach (MovementProperty prop in movementProperties)
             {
+                step++;
+                notificationService.NotifyProgress( step, totalStep );
+                if (setting.SimulationMode == true)
+                {
+                    Thread.Sleep( 1000 );
+                    Debug.WriteLine($"setting.ResetHardwareMode is true. continue : {step}/{totalStep} ");
+                    continue;
+                }
+                Console.WriteLine($"[STEP] {step / movementProperties.Count }");
                 MoveArm(prop);
                 Thread.Sleep(setting.DelayBeforeTogglePen);
                 TogglePen();
@@ -274,7 +308,7 @@ namespace MovementManager
             baseMotorComponent.Move((byte)prop.Alpha);
             // secondaryMotorComponent.Move((byte) prop.Theta);
             int secondaryArmMoveAngle = setting.ArmSecondaryAngleAdjustment + prop.Beta + prop.Omega;
-            secondaryMotorComponent.Move((byte) secondaryArmMoveAngle);
+            secondaryMotorComponent.Move((byte)secondaryArmMoveAngle);
         }
 
         private static void TogglePen()
@@ -282,26 +316,13 @@ namespace MovementManager
             ToggleLed(true);
 
             // move down pen
-            PenDown();
-            PenUp();
+            penMotorComponent.PenDown();
+            penMotorComponent.PenUp();
 
             ToggleLed(false);
         }
 
-        private static void PenUp()
-        {
-            penMotorComponent.Move(10, 500);
-        }
-
-        private static void PenDown()
-        {
-            penMotorComponent.Move((byte)setting.ArmPenDownAngle, 1000);
-        }
-
-        private static void ToggleLed(bool on, int waitDuration = 0)
-        {
-            ledComponent.Toggle(on, waitDuration);
-        }
+        private static void ToggleLed(bool on, int waitTime = 0) => ledComponent.Toggle(on, waitTime);
 
         static void ResetHardware()
         {
@@ -312,7 +333,7 @@ namespace MovementManager
             baseMotorComponent.Move(0, 1000);
             secondaryMotorComponent.Move(setting.ArmSecondaryAngleAdjustment, 1000);
             // Reset PEN 
-            PenUp();
+            penMotorComponent.PenUp();
 
             ToggleLed(false, 1000);
             Console.WriteLine(" ======= End Reset Hardware ======= ");
@@ -323,13 +344,12 @@ namespace MovementManager
 
             for (double alpha = 0; alpha < 90; alpha++)
             {
-
                 for (double beta = 0; beta < 45; beta++)
                 {
-                    double calX = CalculateX(alpha, beta);
+                    double calX = CalculateHorizontalPositionFromGivenAngle(alpha, beta);
                     if (MathHelper.InRange(calX, x, setting.Tolerance))
                     {
-                        double calY = CalculateY(alpha, beta);
+                        double calY = CalculateVerticalPositionFromGivenAngle(alpha, beta);
                         if (MathHelper.InRange(calY, y, setting.Tolerance))
                         {
                             //     Console.WriteLine($"<!> [{ x }, { y }] Trial => x: { calX }, y: { calY }");
@@ -344,19 +364,21 @@ namespace MovementManager
             return null;
         }
 
-        static double CalculateX(double alpha, double beta)
+        static double CalculateHorizontalPositionFromGivenAngle(double alpha, double beta)
         {
             double baseArmLengthHorizontal = setting.ArmBaseLength * MathHelper.Cos(alpha);
             double secondaryArmLengthHorizontal = setting.ArmSecondaryLength * MathHelper.Cos(beta);
+            double totalArmLengthHorizontal = baseArmLengthHorizontal + secondaryArmLengthHorizontal;
 
-            return horizontalLength - baseArmLengthHorizontal - secondaryArmLengthHorizontal;
+            return horizontalLength - totalArmLengthHorizontal;
         }
-        private static double CalculateY(double alpha, double beta)
+        private static double CalculateVerticalPositionFromGivenAngle(double alpha, double beta)
         {
             double baseArmLengthVertical = setting.ArmBaseLength * MathHelper.Sin(alpha);
             double secondaryArmLengthVertical = setting.ArmSecondaryLength * MathHelper.Sin(beta);
+            double totalArmLengthVertical = baseArmLengthVertical + secondaryArmLengthVertical;
 
-            return baseArmLengthVertical + secondaryArmLengthVertical;
+            return totalArmLengthVertical;
         }
 
         private static byte CalculateTetha(double alpha, double beta)
