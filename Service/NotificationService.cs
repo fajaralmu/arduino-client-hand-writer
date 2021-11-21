@@ -15,6 +15,9 @@ namespace MovementManager.Service
         private readonly MemoryMappedFile _memoryMappedFile;
         private readonly string _memoryMapName;
         private readonly long _capacity;
+        private readonly Process _worker;
+
+        public object WorkerApplication => "MovementManagerWorker.exe";
 
         public NotificationService( string memoryMapName, long capacity )
         {
@@ -22,9 +25,10 @@ namespace MovementManager.Service
             _capacity = capacity;
             _memoryMappedFile = GetMemoryMappedFile();
 
+            // TODO include worker service app when building project
             string dir = Environment.CurrentDirectory;
-            Process.Start("cmd.exe", "/k ECHO hello Juan!");
-            ExecNotifWorker( $"{dir}\\WorkerService" );
+            _worker = CreateWorker( $"{dir}\\WorkerService" );
+            _worker.Start();
         }
 
         private MemoryMappedFile GetMemoryMappedFile()
@@ -42,26 +46,28 @@ namespace MovementManager.Service
             
         }
 
-        private void ExecNotifWorker(string workingDirectory, string prefix = "/k")
+        private Process CreateWorker(string workingDirectory, string prefix = "/k")
         {
-            string arguments = "MovementManagerWorker.exe mapName="+_memoryMapName;
-            var proc = new Process
+            string arguments = $"{WorkerApplication} mapName="+_memoryMapName;
+            Process proc = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
                     FileName = "cmd.exe",
                     Arguments = prefix + arguments,
                     WindowStyle = ProcessWindowStyle.Normal,
-                    WorkingDirectory = @workingDirectory
+                    WorkingDirectory = @workingDirectory,
+                    UseShellExecute =true
                 }
             };
 
-            proc.Start();
+            return proc;
         }
 
         public void Dispose()
         {
             _memoryMappedFile?.Dispose();
+            _worker?.Dispose();
         }
     }
 }
