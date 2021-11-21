@@ -41,7 +41,7 @@ namespace MovementManager
 
         static bool running = true;
 
-        static INotificationService notificationService = new NotificationService( "MovementNotif", 2000000 );
+        static INotificationService notificationService = new NotificationService( "movementnotif", 2000000 );
 
         static void Main(string[] args)
         {

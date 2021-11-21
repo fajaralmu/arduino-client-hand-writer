@@ -1,11 +1,12 @@
 using System;
+using System.Diagnostics;
 using System.IO.MemoryMappedFiles;
 using System.Runtime.InteropServices;
 
 namespace MovementManager.Service
 {
 
-    public interface INotificationService
+    public interface INotificationService : IDisposable
     {
         void NotifyProgress(int completed, int total);
     }
@@ -20,6 +21,10 @@ namespace MovementManager.Service
             _memoryMapName = memoryMapName;
             _capacity = capacity;
             _memoryMappedFile = GetMemoryMappedFile();
+
+            string dir = Environment.CurrentDirectory;
+            Process.Start("cmd.exe", "/k ECHO hello Juan!");
+            ExecNotifWorker( $"{dir}\\WorkerService" );
         }
 
         private MemoryMappedFile GetMemoryMappedFile()
@@ -35,6 +40,28 @@ namespace MovementManager.Service
                 // accessor.Write(2, total);
             }
             
+        }
+
+        private void ExecNotifWorker(string workingDirectory, string prefix = "/k")
+        {
+            string arguments = "MovementManagerWorker.exe mapName="+_memoryMapName;
+            var proc = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = prefix + arguments,
+                    WindowStyle = ProcessWindowStyle.Normal,
+                    WorkingDirectory = @workingDirectory
+                }
+            };
+
+            proc.Start();
+        }
+
+        public void Dispose()
+        {
+            _memoryMappedFile?.Dispose();
         }
     }
 }
