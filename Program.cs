@@ -22,7 +22,7 @@ namespace MovementManager
     {
 
         const double PX_PER_CM = 37.795280352161;
-
+        const int LED_BLINK_COUNT = 3;
         static double maxX;
         static double maxY;
         static double minX = 0;
@@ -313,12 +313,23 @@ namespace MovementManager
 
         private static void TogglePen()
         {
-            ToggleLed(true);
-
+            Blink();
             // move down pen
             penMotorComponent.PenDown();
-            penMotorComponent.PenUp();
 
+            for (int i = 0; i < LED_BLINK_COUNT; i++)
+            {
+                Blink();
+            }
+
+            penMotorComponent.PenUp();
+            
+            Blink();
+        }
+
+        private static void Blink()
+        {
+            ToggleLed(true);
             ToggleLed(false);
         }
 

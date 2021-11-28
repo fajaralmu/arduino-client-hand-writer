@@ -16,6 +16,6 @@
     
     "portName": "COM7",
     "baudRate": 9600,
-    "simulationMode": true,
+    "simulationMode": false,
     "resetHardwareMode": false
 }
